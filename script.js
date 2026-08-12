@@ -4,14 +4,8 @@ const ANDROID_OPTIONS = ['7', '10', '12', '14'];
 const state = {
   appsConfig: [],
   whiteListPackageName: '',
-  imageConfig: {
-    config: [],
-    timeStamp: ''
-  },
-  pfxConfig: {
-    pfxFileName: '',
-    timeStamp: ''
-  },
+  imageConfig: { config: [], timeStamp: '' },
+  pfxConfig: { pfxFileName: '', timeStamp: '' },
   bannerConfig: [],
   supportConfig: {
     timeStamp: '',
@@ -75,7 +69,35 @@ function normalizeApp(app = {}) {
   };
 }
 
+function getAppKey(app) {
+  return `${app.packageName}|${app.appVersion}`;
+}
+
+function isDependencyOfAnotherApp(index) {
+  const target = state.appsConfig[index];
+  if (!target) return false;
+  const key = getAppKey(target);
+  return state.appsConfig.some((app, i) => {
+    if (i === index) return false;
+    return (app.dependency || []).some(dep => `${dep.packageName}|${dep.appVersion}` === key);
+  });
+}
+
+function enforceDependencyAutoInstall() {
+  const dependencyKeys = new Set();
+  state.appsConfig.forEach(app => {
+    (app.dependency || []).forEach(dep => dependencyKeys.add(`${dep.packageName}|${dep.appVersion}`));
+  });
+
+  state.appsConfig.forEach(app => {
+    if (dependencyKeys.has(getAppKey(app))) {
+      app.autoInstall = false;
+    }
+  });
+}
+
 function buildOutput() {
+  enforceDependencyAutoInstall();
   return {
     isRunOnBackground: $('runBackground').checked,
     isConfirmationRequired: $('confirmation').checked,
@@ -91,23 +113,28 @@ function buildOutput() {
 }
 
 function refreshPreview() {
+  enforceDependencyAutoInstall();
   $('jsonPreview').value = JSON.stringify(buildOutput(), null, 4);
 }
 
 function renderApps() {
+  enforceDependencyAutoInstall();
   const container = $('appsContainer');
   if (!state.appsConfig.length) {
     container.innerHTML = '<div class="empty">No applications added yet. Click <b>+ Add Application</b>.</div>';
     return;
   }
-  container.innerHTML = state.appsConfig.map((app, index) => `
+  container.innerHTML = state.appsConfig.map((app, index) => {
+    const dependency = isDependencyOfAnotherApp(index);
+    return `
     <div class="app-row">
       <div class="app-main">
         <div class="app-title">${escapeHtml(app.title || app.appName)}</div>
         <div class="app-meta">${escapeHtml(app.packageName)} · v${escapeHtml(app.appVersion)}${app.revisionId ? ` · Revision ${escapeHtml(app.revisionId)}` : ''}</div>
         <div class="badges">
           <span class="badge ${app.isMandatoy ? 'green' : ''}">${app.isMandatoy ? 'Mandatory' : 'Optional'}</span>
-          ${app.autoInstall ? '<span class="badge">Auto Install</span>' : ''}
+          ${app.autoInstall ? '<span class="badge">Auto Install</span>' : '<span class="badge">Manual Install</span>'}
+          ${dependency ? '<span class="badge green">Dependency</span>' : ''}
           ${app.modelName.map(m => `<span class="badge">${escapeHtml(m)}</span>`).join('')}
           ${app.androidVersion.map(v => `<span class="badge">Android ${escapeHtml(v)}</span>`).join('')}
         </div>
@@ -117,7 +144,8 @@ function renderApps() {
         <button data-action="clone" data-index="${index}">Clone</button>
         <button data-action="delete" data-index="${index}">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function resetForm() {
@@ -130,6 +158,7 @@ function resetForm() {
   setChecked('androidOptions', []);
   $('tids').value = '';
   $('tidSection').classList.add('hidden');
+  $('autoInstall').disabled = false;
   updateDependencyOptions();
 }
 
@@ -154,9 +183,18 @@ function openModal(index = -1) {
     setChecked('androidOptions', app.androidVersion);
     updateDependencyOptions(app.dependency);
     updateTidVisibility();
+    updateAutoInstallControl(index);
   }
   $('appModal').classList.remove('hidden');
   $('title').focus();
+}
+
+function updateAutoInstallControl(index) {
+  const isDependency = isDependencyOfAnotherApp(index);
+  $('autoInstall').disabled = isDependency;
+  if (isDependency) {
+    $('autoInstall').checked = false;
+  }
 }
 
 function updateTidVisibility() {
@@ -173,7 +211,7 @@ function updateDependencyOptions(selectedDependencies = []) {
     return;
   }
   container.innerHTML = candidates.map(app => {
-    const key = `${app.packageName}|${app.appVersion}`;
+    const key = getAppKey(app);
     return `<label class="dependency-row">
       <input type="checkbox" value="${escapeHtml(key)}" data-app-name="${escapeHtml(app.appName)}" data-package="${escapeHtml(app.packageName)}" data-version="${escapeHtml(app.appVersion)}" ${selected.has(key) ? 'checked' : ''}>
       <span>${escapeHtml(app.title || app.appName)} — ${escapeHtml(app.packageName)} — ${escapeHtml(app.appVersion)}</span>
@@ -201,6 +239,7 @@ function saveApp() {
   }
 
   const availabilityType = Number($('availabilityType').value);
+  const dependencies = getDependencies();
   const app = normalizeApp({
     title, appName, packageName, appVersion,
     revisionId: $('revisionId').value.trim(),
@@ -212,13 +251,16 @@ function saveApp() {
     deleteTids: [],
     modelName: checkedValues('modelOptions'),
     androidVersion: checkedValues('androidOptions'),
-    autoInstall: $('autoInstall').checked,
-    dependency: getDependencies()
+    autoInstall: $('autoInstall').disabled ? false : $('autoInstall').checked,
+    dependency: dependencies
   });
 
   const index = Number($('editIndex').value);
   if (index >= 0) state.appsConfig[index] = app;
   else state.appsConfig.push(app);
+
+  // Any application selected as a dependency must never be auto-installed.
+  enforceDependencyAutoInstall();
 
   renderApps();
   refreshPreview();
@@ -253,6 +295,7 @@ function importJson(file) {
       state.pfxConfig = data.pfxConfig || { pfxFileName: '', timeStamp: '' };
       state.bannerConfig = Array.isArray(data.bannerConfig) ? data.bannerConfig : [];
       state.supportConfig = data.supportConfig || { timeStamp: '', helpLine: '', preAuth: { dateExceededMessage: '', amountLimitMessage: '', completionReminderMessage: '' } };
+      enforceDependencyAutoInstall();
       renderApps();
       refreshPreview();
       toast(`Imported ${state.appsConfig.length} application(s)`);
@@ -319,6 +362,7 @@ $('appsContainer').addEventListener('click', e => {
     const clone = structuredClone(state.appsConfig[index]);
     clone.title = `${clone.title} Copy`;
     state.appsConfig.splice(index + 1, 0, clone);
+    enforceDependencyAutoInstall();
     renderApps();
     refreshPreview();
     toast('Application cloned');
@@ -326,6 +370,7 @@ $('appsContainer').addEventListener('click', e => {
   if (action === 'delete') {
     if (confirm(`Delete ${state.appsConfig[index].title || state.appsConfig[index].appName}?`)) {
       state.appsConfig.splice(index, 1);
+      enforceDependencyAutoInstall();
       renderApps();
       refreshPreview();
       toast('Application deleted');
