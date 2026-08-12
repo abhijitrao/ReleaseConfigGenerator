@@ -1,0 +1,72 @@
+{
+    "isRunOnBackground": true,
+    "isConfirmationRequired": false,
+    "isShowErrorMsg": false,
+    "isDownloadOverWifiOnly": false,
+    "appsConfig": [
+        {
+            "title": "Launcher App",
+            "appName": "LAUNCHER_HDFCMultiAppLauncher-v1.3_signed.zip",
+            "packageName": "com.verifone.adc.launcher",
+            "appVersion": "1.3",
+            "revisionId": "",
+            "isMandatoy": true,
+            "availabilityType": 0,
+            "tids": [],
+            "isDelete": false,
+            "deleteType": 0,
+            "deleteTids": [],
+            "modelName": ["X990"],
+            "androidVersion": ["7", "10"],
+            "autoInstall": true,
+            "dependency": []
+        },
+        {
+            "title": "BonusHub App",
+            "appName": "BH_HDFC_MKSK_DIVYANG_020333_260812_DEV-debug.zip",
+            "packageName": "com.example.verifonevx990app",
+            "appVersion": "02.03.33",
+            "revisionId": "260812",
+            "isMandatoy": true,
+            "availabilityType": 0,
+            "tids": [],
+            "isDelete": false,
+            "deleteType": 0,
+            "deleteTids": [],
+            "modelName": ["X990"],
+            "androidVersion": ["7", "10"],
+            "autoInstall": true,
+            "dependency": [
+                {
+                    "appName": "VFService_PermissionOff_4.6.0_260625_114534_debug_v1v2.zip",
+                    "packageName": "com.vfi.smartpos.deviceservice",
+                    "appVersion": "4.6.0"
+                },
+                {
+                    "appName": "VFX990SystemService_1.14.0_1000500_240929_release_v1v2.zip",
+                    "packageName": "com.vfi.smartpos.system_service",
+                    "appVersion": "1.14.0"
+                }
+            ]
+        }
+    ],
+    "whiteListPackageName": "",
+    "imageConfig": {
+        "config": [],
+        "timeStamp": ""
+    },
+    "pfxConfig": {
+        "pfxFileName": "",
+        "timeStamp": ""
+    },
+    "bannerConfig": [],
+    "supportConfig": {
+        "timeStamp": "",
+        "helpLine": "",
+        "preAuth": {
+            "dateExceededMessage": "",
+            "amountLimitMessage": "",
+            "completionReminderMessage": ""
+        }
+    }
+}
