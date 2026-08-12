@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Release Config Manager</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Release Config Manager</h1>
+      <p>AppStore JSON configuration generator</p>
+    </div>
+    <div class="toolbar">
+      <button id="importBtn">Import JSON</button>
+      <button id="newBtn">New</button>
+      <button id="downloadBtn" class="primary">Download JSON</button>
+      <input id="fileInput" type="file" accept="application/json,.json" hidden />
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="editor-pane">
+      <div class="card">
+        <div class="card-title-row">
+          <div>
+            <h2>Global Configuration</h2>
+            <p>Settings applied to the generated AppStore configuration.</p>
+          </div>
+        </div>
+        <div class="settings-grid">
+          <label class="switch-row"><input id="runBackground" type="checkbox" /><span>Run On Background</span></label>
+          <label class="switch-row"><input id="confirmation" type="checkbox" /><span>Confirmation Required</span></label>
+          <label class="switch-row"><input id="showError" type="checkbox" /><span>Show Error Message</span></label>
+          <label class="switch-row"><input id="wifiOnly" type="checkbox" /><span>Download Over WiFi Only</span></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title-row">
+          <div>
+            <h2>Applications</h2>
+            <p>Manage release applications and their dependencies.</p>
+          </div>
+          <button id="addAppBtn" class="primary">+ Add Application</button>
+        </div>
+        <div id="appsContainer" class="apps-container"></div>
+      </div>
+    </section>
+
+    <aside class="preview-pane">
+      <div class="card preview-card">
+        <div class="card-title-row">
+          <div>
+            <h2>JSON Preview</h2>
+            <p>Generated output updates automatically.</p>
+          </div>
+          <button id="copyBtn">Copy</button>
+        </div>
+        <textarea id="jsonPreview" spellcheck="false" readonly></textarea>
+      </div>
+    </aside>
+  </main>
+
+  <div id="appModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h2 id="modalTitle">Add Application</h2>
+          <p>Enter application details.</p>
+        </div>
+        <button id="closeModalBtn" class="icon-btn" aria-label="Close">×</button>
+      </div>
+
+      <form id="appForm" class="modal-body">
+        <input id="editIndex" type="hidden" value="-1" />
+
+        <div class="form-grid">
+          <div class="field"><label for="title">Title *</label><input id="title" required /></div>
+          <div class="field"><label for="appName">App Name *</label><input id="appName" required /></div>
+          <div class="field"><label for="packageName">Package Name *</label><input id="packageName" required /></div>
+          <div class="field"><label for="appVersion">App Version *</label><input id="appVersion" required /></div>
+          <div class="field"><label for="revisionId">Revision ID</label><input id="revisionId" /></div>
+          <div class="field"><label for="availabilityType">Availability Type</label>
+            <select id="availabilityType"><option value="0">All</option><option value="1">TID Based</option></select>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <h3>Target Models</h3>
+          <div id="modelOptions" class="check-grid"></div>
+        </div>
+
+        <div class="section-block">
+          <h3>Android Versions</h3>
+          <div id="androidOptions" class="check-grid"></div>
+        </div>
+
+        <div class="section-block inline-options">
+          <label class="switch-row"><input id="mandatory" type="checkbox" /><span>Mandatory</span></label>
+          <label class="switch-row"><input id="autoInstall" type="checkbox" /><span>Auto Install</span></label>
+          <label class="switch-row"><input id="isDelete" type="checkbox" /><span>Delete App</span></label>
+        </div>
+
+        <div id="tidSection" class="section-block hidden">
+          <h3>TIDs</h3>
+          <textarea id="tids" rows="4" placeholder="One TID per line"></textarea>
+        </div>
+
+        <div class="section-block">
+          <h3>Dependencies</h3>
+          <div id="dependencyOptions" class="dependency-options"></div>
+        </div>
+
+        <div id="formError" class="form-error hidden"></div>
+      </form>
+
+      <div class="modal-footer">
+        <button id="cancelBtn">Cancel</button>
+        <button id="saveAppBtn" class="primary">Save Application</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
