@@ -82,9 +82,34 @@
           <div class="field"><label for="packageName">Package Name *</label><input id="packageName" required /></div>
           <div class="field"><label for="appVersion">App Version *</label><input id="appVersion" required /></div>
           <div class="field"><label for="revisionId">Revision ID</label><input id="revisionId" /></div>
-          <div class="field"><label for="availabilityType">Availability Type</label>
-            <select id="availabilityType"><option value="0">All</option><option value="1">TID Based</option></select>
+        </div>
+
+        <div class="section-block inline-options">
+          <label class="switch-row"><input id="mandatory" type="checkbox" /><span>Mandatory</span></label>
+          <label class="switch-row"><input id="autoInstall" type="checkbox" /><span>Auto Install</span></label>
+          <label class="switch-row"><input id="isDelete" type="checkbox" /><span>Delete App</span></label>
+        </div>
+
+        <div class="form-grid">
+          <div id="availabilitySection" class="field">
+            <label for="availabilityType">Availability Type</label>
+            <select id="availabilityType">
+              <option value="0">All</option>
+              <option value="1">TID Based</option>
+            </select>
           </div>
+          <div id="deleteTypeSection" class="field hidden">
+            <label for="deleteType">Delete Type</label>
+            <select id="deleteType">
+              <option value="0">All</option>
+              <option value="1">TID Based</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="tidSection" class="section-block hidden">
+          <h3>TIDs</h3>
+          <textarea id="tids" rows="4" placeholder="One TID per line"></textarea>
         </div>
 
         <div class="section-block">
@@ -95,23 +120,6 @@
         <div class="section-block">
           <h3>Android Versions</h3>
           <div id="androidOptions" class="check-grid"></div>
-        </div>
-
-        <div class="section-block inline-options">
-          <label class="switch-row"><input id="mandatory" type="checkbox" /><span>Mandatory</span></label>
-          <label class="switch-row"><input id="autoInstall" type="checkbox" /><span>Auto Install</span></label>
-          <label class="switch-row"><input id="isDelete" type="checkbox" /><span>Delete App</span></label>
-        </div>
-
-        <div id="tidSection" class="section-block hidden">
-          <h3>TIDs</h3>
-          <textarea id="tids" rows="4" placeholder="One TID per line"></textarea>
-        </div>
-
-        <div id="deleteTidSection" class="section-block hidden">
-          <h3>Delete TIDs</h3>
-          <textarea id="deleteTids" rows="4" placeholder="Enter TIDs to delete, one TID per line"></textarea>
-          <p class="field-hint">When Delete App is enabled and TIDs are provided, deleteType will be generated as 1.</p>
         </div>
 
         <div class="section-block">
@@ -130,7 +138,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-
   <script src="script.js"></script>
 </body>
 </html>
