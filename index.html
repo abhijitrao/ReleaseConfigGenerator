@@ -35,15 +35,21 @@
     <div class="modal-header"><div><h2 id="modalTitle">Add Application</h2><p>Enter application details.</p></div><button id="closeModalBtn" class="icon-btn" aria-label="Close">×</button></div>
     <form id="appForm" class="modal-body">
       <input id="editIndex" type="hidden" value="-1" />
-      <div class="form-grid">
+
+      <div class="form-grid form-row">
         <div class="field"><label for="title">Title *</label><input id="title" required /></div>
         <div class="field"><label for="packageName">Package Name *</label><input id="packageName" required /></div>
       </div>
-      <div class="form-grid single-row"><div class="field"><label for="appName">App Name (FileName) *</label><input id="appName" required /></div></div>
-      <div class="form-grid"><div class="field"><label for="appVersion">App Version *</label><input id="appVersion" required /></div><div class="field"><label for="revisionId">Revision ID</label><input id="revisionId" /></div></div>
+      <div class="form-grid single-row form-row"><div class="field"><label for="appName">App Name (FileName) *</label><input id="appName" required /></div></div>
+      <div class="form-grid form-row"><div class="field"><label for="appVersion">App Version *</label><input id="appVersion" required /></div><div class="field"><label for="revisionId">Revision ID</label><input id="revisionId" /></div></div>
 
-      <div class="section-block mode-block">
+      <div class="section-block option-row">
+        <label class="switch-row"><input id="mandatory" type="checkbox" /><span>Mandatory</span></label>
+        <label class="switch-row"><input id="autoInstall" type="checkbox" /><span>Auto Install</span></label>
         <label class="switch-row"><input id="isDelete" type="checkbox" /><span>Delete App</span></label>
+      </div>
+
+      <div class="section-block mode-section">
         <div id="availabilitySection" class="field"><label for="availabilityType">Availability Type</label><select id="availabilityType"><option value="0">All</option><option value="1">TID Based</option></select></div>
         <div id="deleteTypeSection" class="field hidden"><label for="deleteType">Delete Type</label><select id="deleteType"><option value="0">All</option><option value="1">TID Based</option></select></div>
       </div>
@@ -66,10 +72,6 @@
         <div id="customAndroidList" class="custom-chip-list"></div>
       </div>
 
-      <div class="section-block inline-options">
-        <label class="switch-row"><input id="mandatory" type="checkbox" /><span>Mandatory</span></label>
-        <label class="switch-row"><input id="autoInstall" type="checkbox" /><span>Auto Install</span></label>
-      </div>
       <div class="section-block"><h3>Dependencies</h3><div id="dependencyOptions" class="dependency-options"></div></div>
       <div id="formError" class="form-error hidden"></div>
     </form>
