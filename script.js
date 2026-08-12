@@ -1,70 +1,123 @@
-const MODEL_OPTIONS = ['PAX-A910', 'PAX-A910S', 'PAX-A99', 'PAX-A920', 'PAX-A9205', 'PAX-A9207', 'PAX-A930', 'Verifone-X990', 'Verifone-X990-Pro'];
-const ANDROID_OPTIONS = ['Android 7', 'Android 10', 'Android 12', 'Android 14'];
+const MODEL_OPTIONS = ['X990', 'A910', 'A910S', 'A99', 'A920', 'A9205', 'A9207', 'A930'];
+const ANDROID_OPTIONS = ['7', '10', '12', '14'];
 
 const state = {
-  version: 1,
-  apps: []
+  appsConfig: [],
+  whiteListPackageName: '',
+  imageConfig: {
+    config: [],
+    timeStamp: ''
+  },
+  pfxConfig: {
+    pfxFileName: '',
+    timeStamp: ''
+  },
+  bannerConfig: [],
+  supportConfig: {
+    timeStamp: '',
+    helpLine: '',
+    preAuth: {
+      dateExceededMessage: '',
+      amountLimitMessage: '',
+      completionReminderMessage: ''
+    }
+  }
 };
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>\"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
 
 function createChecks(container, values, prefix) {
   container.innerHTML = values.map((value, index) => `
     <label class="check-item">
-      <input type="checkbox" data-prefix="${prefix}" value="${escapeHtml(value)}" id="${prefix}-${index}">
+      <input type="checkbox" id="${prefix}-${index}" value="${escapeHtml(value)}">
       <span>${escapeHtml(value)}</span>
     </label>`).join('');
 }
 
-function escapeHtml(value) {
-  return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+function checkedValues(containerId) {
+  return [...document.querySelectorAll(`#${containerId} input:checked`)].map(input => input.value);
 }
 
-function getGlobalConfig() {
+function setChecked(containerId, values) {
+  const selected = new Set(values || []);
+  document.querySelectorAll(`#${containerId} input`).forEach(input => {
+    input.checked = selected.has(input.value);
+  });
+}
+
+function normalizeApp(app = {}) {
   return {
-    isRunOnBackground: $('runBackground').checked,
-    isConfirmationRequired: $('confirmation').checked,
-    isShowErrorMessage: $('showError').checked,
-    isDownloadOverWifiOnly: $('wifiOnly').checked
+    title: app.title || '',
+    appName: app.appName || '',
+    packageName: app.packageName || '',
+    appVersion: app.appVersion || '',
+    revisionId: app.revisionId || '',
+    isMandatoy: app.isMandatoy ?? app.mandatory ?? true,
+    availabilityType: Number(app.availabilityType ?? 0),
+    tids: Array.isArray(app.tids) ? app.tids : [],
+    isDelete: app.isDelete ?? false,
+    deleteType: Number(app.deleteType ?? 0),
+    deleteTids: Array.isArray(app.deleteTids) ? app.deleteTids : [],
+    modelName: Array.isArray(app.modelName) ? app.modelName : (Array.isArray(app.models) ? app.models : []),
+    androidVersion: Array.isArray(app.androidVersion) ? app.androidVersion : (Array.isArray(app.androidVersions) ? app.androidVersions : []),
+    autoInstall: app.autoInstall ?? false,
+    dependency: Array.isArray(app.dependency) ? app.dependency.map(d => ({
+      appName: d.appName || '',
+      packageName: d.packageName || '',
+      appVersion: d.appVersion || ''
+    })) : []
   };
 }
 
 function buildOutput() {
   return {
-    ...getGlobalConfig(),
-    apps: state.apps
+    isRunOnBackground: $('runBackground').checked,
+    isConfirmationRequired: $('confirmation').checked,
+    isShowErrorMsg: $('showError').checked,
+    isDownloadOverWifiOnly: $('wifiOnly').checked,
+    appsConfig: state.appsConfig.map(normalizeApp),
+    whiteListPackageName: state.whiteListPackageName,
+    imageConfig: state.imageConfig,
+    pfxConfig: state.pfxConfig,
+    bannerConfig: state.bannerConfig,
+    supportConfig: state.supportConfig
   };
 }
 
 function refreshPreview() {
-  $('jsonPreview').value = JSON.stringify(buildOutput(), null, 2);
+  $('jsonPreview').value = JSON.stringify(buildOutput(), null, 4);
 }
 
 function renderApps() {
   const container = $('appsContainer');
-  if (!state.apps.length) {
-    container.innerHTML = '<div class="empty">No applications added yet. Click <b>+ Add Application</b> to create one.</div>';
+  if (!state.appsConfig.length) {
+    container.innerHTML = '<div class="empty">No applications added yet. Click <b>+ Add Application</b>.</div>';
     return;
   }
-
-  container.innerHTML = state.apps.map((app, index) => {
-    const badges = [
-      app.appVersion ? `v${app.appVersion}` : '',
-      app.mandatory ? 'Mandatory' : 'Optional',
-      app.autoInstall ? 'Auto Install' : ''
-    ].filter(Boolean);
-    return `<div class="app-row">
+  container.innerHTML = state.appsConfig.map((app, index) => `
+    <div class="app-row">
       <div class="app-main">
         <div class="app-title">${escapeHtml(app.title || app.appName)}</div>
-        <div class="app-meta">${escapeHtml(app.packageName)}${app.revisionId ? ` · Revision ${escapeHtml(app.revisionId)}` : ''}</div>
-        <div class="badges">${badges.map((b, i) => `<span class="badge ${i === 1 && app.mandatory ? 'green' : ''}">${escapeHtml(b)}</span>`).join('')}</div>
+        <div class="app-meta">${escapeHtml(app.packageName)} · v${escapeHtml(app.appVersion)}${app.revisionId ? ` · Revision ${escapeHtml(app.revisionId)}` : ''}</div>
+        <div class="badges">
+          <span class="badge ${app.isMandatoy ? 'green' : ''}">${app.isMandatoy ? 'Mandatory' : 'Optional'}</span>
+          ${app.autoInstall ? '<span class="badge">Auto Install</span>' : ''}
+          ${app.modelName.map(m => `<span class="badge">${escapeHtml(m)}</span>`).join('')}
+          ${app.androidVersion.map(v => `<span class="badge">Android ${escapeHtml(v)}</span>`).join('')}
+        </div>
       </div>
       <div class="app-actions">
         <button data-action="edit" data-index="${index}">Edit</button>
+        <button data-action="clone" data-index="${index}">Clone</button>
         <button data-action="delete" data-index="${index}">Delete</button>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
 function resetForm() {
@@ -73,48 +126,67 @@ function resetForm() {
   $('modalTitle').textContent = 'Add Application';
   $('saveAppBtn').textContent = 'Save Application';
   $('formError').classList.add('hidden');
-  document.querySelectorAll('#modelOptions input, #androidOptions input, #dependencyOptions input').forEach(i => i.checked = false);
+  setChecked('modelOptions', []);
+  setChecked('androidOptions', []);
   $('tids').value = '';
   $('tidSection').classList.add('hidden');
+  updateDependencyOptions();
 }
 
 function openModal(index = -1) {
   resetForm();
   if (index >= 0) {
-    const app = state.apps[index];
+    const app = state.appsConfig[index];
     $('editIndex').value = String(index);
     $('modalTitle').textContent = 'Edit Application';
     $('saveAppBtn').textContent = 'Update Application';
-    $('title').value = app.title || '';
-    $('appName').value = app.appName || '';
-    $('packageName').value = app.packageName || '';
-    $('appVersion').value = app.appVersion || '';
-    $('revisionId').value = app.revisionId || '';
-    $('availabilityType').value = String(app.availabilityType ?? 0);
-    $('mandatory').checked = !!app.mandatory;
+    $('title').value = app.title;
+    $('appName').value = app.appName;
+    $('packageName').value = app.packageName;
+    $('appVersion').value = app.appVersion;
+    $('revisionId').value = app.revisionId;
+    $('availabilityType').value = String(app.availabilityType);
+    $('mandatory').checked = !!app.isMandatoy;
     $('autoInstall').checked = !!app.autoInstall;
     $('isDelete').checked = !!app.isDelete;
-    $('tids').value = Array.isArray(app.tids) ? app.tids.join('\n') : '';
-    setChecked('modelOptions', app.models || []);
-    setChecked('androidOptions', app.androidVersions || []);
-    setChecked('dependencyOptions', app.dependencies || []);
+    $('tids').value = app.tids.join('\n');
+    setChecked('modelOptions', app.modelName);
+    setChecked('androidOptions', app.androidVersion);
+    updateDependencyOptions(app.dependency);
     updateTidVisibility();
   }
   $('appModal').classList.remove('hidden');
   $('title').focus();
 }
 
-function setChecked(containerId, values) {
-  const set = new Set(values);
-  document.querySelectorAll(`#${containerId} input`).forEach(input => input.checked = set.has(input.value));
-}
-
-function checkedValues(containerId) {
-  return [...document.querySelectorAll(`#${containerId} input:checked`)].map(i => i.value);
-}
-
 function updateTidVisibility() {
   $('tidSection').classList.toggle('hidden', $('availabilityType').value !== '1');
+}
+
+function updateDependencyOptions(selectedDependencies = []) {
+  const container = $('dependencyOptions');
+  const selected = new Set(selectedDependencies.map(d => `${d.packageName}|${d.appVersion}`));
+  const currentEdit = Number($('editIndex').value);
+  const candidates = state.appsConfig.filter((_, i) => i !== currentEdit);
+  if (!candidates.length) {
+    container.innerHTML = '<div class="empty">Add other applications first to configure dependencies.</div>';
+    return;
+  }
+  container.innerHTML = candidates.map(app => {
+    const key = `${app.packageName}|${app.appVersion}`;
+    return `<label class="dependency-row">
+      <input type="checkbox" value="${escapeHtml(key)}" data-app-name="${escapeHtml(app.appName)}" data-package="${escapeHtml(app.packageName)}" data-version="${escapeHtml(app.appVersion)}" ${selected.has(key) ? 'checked' : ''}>
+      <span>${escapeHtml(app.title || app.appName)} — ${escapeHtml(app.packageName)} — ${escapeHtml(app.appVersion)}</span>
+    </label>`;
+  }).join('');
+}
+
+function getDependencies() {
+  return [...document.querySelectorAll('#dependencyOptions input:checked')].map(input => ({
+    appName: input.dataset.appName,
+    packageName: input.dataset.package,
+    appVersion: input.dataset.version
+  }));
 }
 
 function saveApp() {
@@ -122,43 +194,36 @@ function saveApp() {
   const appName = $('appName').value.trim();
   const packageName = $('packageName').value.trim();
   const appVersion = $('appVersion').value.trim();
-  const error = $('formError');
   if (!title || !appName || !packageName || !appVersion) {
-    error.textContent = 'Title, App Name, Package Name and App Version are required.';
-    error.classList.remove('hidden');
+    $('formError').textContent = 'Title, App Name, Package Name and App Version are required.';
+    $('formError').classList.remove('hidden');
     return;
   }
 
   const availabilityType = Number($('availabilityType').value);
-  const app = {
-    title,
-    appName,
-    packageName,
-    appVersion,
+  const app = normalizeApp({
+    title, appName, packageName, appVersion,
     revisionId: $('revisionId').value.trim(),
+    isMandatoy: $('mandatory').checked,
     availabilityType,
-    models: checkedValues('modelOptions'),
-    androidVersions: checkedValues('androidOptions'),
-    mandatory: $('mandatory').checked,
-    autoInstall: $('autoInstall').checked,
-    isDelete: $('isDelete').checked,
     tids: availabilityType === 1 ? $('tids').value.split(/\r?\n/).map(v => v.trim()).filter(Boolean) : [],
-    dependencies: checkedValues('dependencyOptions')
-  };
+    isDelete: $('isDelete').checked,
+    deleteType: 0,
+    deleteTids: [],
+    modelName: checkedValues('modelOptions'),
+    androidVersion: checkedValues('androidOptions'),
+    autoInstall: $('autoInstall').checked,
+    dependency: getDependencies()
+  });
 
-  const editIndex = Number($('editIndex').value);
-  if (editIndex >= 0) state.apps[editIndex] = app;
-  else state.apps.push(app);
+  const index = Number($('editIndex').value);
+  if (index >= 0) state.appsConfig[index] = app;
+  else state.appsConfig.push(app);
 
   renderApps();
   refreshPreview();
   closeModal();
-  toast(editIndex >= 0 ? 'Application updated' : 'Application added');
-}
-
-function renderDependencies() {
-  const container = $('dependencyOptions');
-  container.innerHTML = '<div class="empty">Add applications first to select dependencies.</div>';
+  toast(index >= 0 ? 'Application updated' : 'Application added');
 }
 
 function closeModal() {
@@ -173,20 +238,6 @@ function toast(message) {
   toast.timer = setTimeout(() => el.classList.remove('show'), 1800);
 }
 
-function updateDependencies() {
-  const container = $('dependencyOptions');
-  const current = checkedValues('dependencyOptions');
-  if (!state.apps.length) {
-    renderDependencies();
-    return;
-  }
-  container.innerHTML = state.apps.map((app, index) => `
-    <label class="dependency-row">
-      <input type="checkbox" value="${index}" ${current.includes(String(index)) ? 'checked' : ''}>
-      <span>${escapeHtml(app.title || app.appName)} — ${escapeHtml(app.appVersion || '')}</span>
-    </label>`).join('');
-}
-
 function importJson(file) {
   const reader = new FileReader();
   reader.onload = () => {
@@ -194,13 +245,18 @@ function importJson(file) {
       const data = JSON.parse(reader.result);
       $('runBackground').checked = !!data.isRunOnBackground;
       $('confirmation').checked = !!data.isConfirmationRequired;
-      $('showError').checked = !!data.isShowErrorMessage;
+      $('showError').checked = !!data.isShowErrorMsg;
       $('wifiOnly').checked = !!data.isDownloadOverWifiOnly;
-      state.apps = Array.isArray(data.apps) ? data.apps : [];
+      state.appsConfig = Array.isArray(data.appsConfig) ? data.appsConfig.map(normalizeApp) : [];
+      state.whiteListPackageName = data.whiteListPackageName || '';
+      state.imageConfig = data.imageConfig || { config: [], timeStamp: '' };
+      state.pfxConfig = data.pfxConfig || { pfxFileName: '', timeStamp: '' };
+      state.bannerConfig = Array.isArray(data.bannerConfig) ? data.bannerConfig : [];
+      state.supportConfig = data.supportConfig || { timeStamp: '', helpLine: '', preAuth: { dateExceededMessage: '', amountLimitMessage: '', completionReminderMessage: '' } };
       renderApps();
       refreshPreview();
-      toast('JSON imported');
-    } catch (e) {
+      toast(`Imported ${state.appsConfig.length} application(s)`);
+    } catch {
       toast('Invalid JSON file');
     }
   };
@@ -208,27 +264,43 @@ function importJson(file) {
 }
 
 function downloadJson() {
-  const blob = new Blob([JSON.stringify(buildOutput(), null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(buildOutput(), null, 4)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'release-config.json';
-  a.click();
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'appstore-config.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
   URL.revokeObjectURL(url);
   toast('JSON downloaded');
 }
 
-$('modelOptions').innerHTML = '';
 createChecks($('modelOptions'), MODEL_OPTIONS, 'model');
 createChecks($('androidOptions'), ANDROID_OPTIONS, 'android');
-renderDependencies();
 renderApps();
 refreshPreview();
 
 ['runBackground', 'confirmation', 'showError', 'wifiOnly'].forEach(id => $(id).addEventListener('change', refreshPreview));
-$('addAppBtn').addEventListener('click', openModal);
+$('addAppBtn').addEventListener('click', () => openModal());
+$('closeModalBtn').addEventListener('click', closeModal);
+$('cancelBtn').addEventListener('click', closeModal);
+$('saveAppBtn').addEventListener('click', saveApp);
+$('availabilityType').addEventListener('change', updateTidVisibility);
+$('importBtn').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ''; });
+$('downloadBtn').addEventListener('click', downloadJson);
+$('copyBtn').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('jsonPreview').value); toast('JSON copied'); }
+  catch { toast('Copy failed'); }
+});
 $('newBtn').addEventListener('click', () => {
-  state.apps = [];
+  state.appsConfig = [];
+  state.whiteListPackageName = '';
+  state.imageConfig = { config: [], timeStamp: '' };
+  state.pfxConfig = { pfxFileName: '', timeStamp: '' };
+  state.bannerConfig = [];
+  state.supportConfig = { timeStamp: '', helpLine: '', preAuth: { dateExceededMessage: '', amountLimitMessage: '', completionReminderMessage: '' } };
   $('runBackground').checked = false;
   $('confirmation').checked = false;
   $('showError').checked = false;
@@ -237,32 +309,27 @@ $('newBtn').addEventListener('click', () => {
   refreshPreview();
   toast('New configuration created');
 });
-$('downloadBtn').addEventListener('click', downloadJson);
-$('importBtn').addEventListener('click', () => $('fileInput').click());
-$('fileInput').addEventListener('change', e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ''; });
-$('copyBtn').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText($('jsonPreview').value); toast('JSON copied'); }
-  catch { toast('Copy failed'); }
-});
-$('closeModalBtn').addEventListener('click', closeModal);
-$('cancelBtn').addEventListener('click', closeModal);
-$('saveAppBtn').addEventListener('click', saveApp);
-$('availabilityType').addEventListener('change', updateTidVisibility);
 $('appsContainer').addEventListener('click', e => {
   const button = e.target.closest('button[data-action]');
   if (!button) return;
   const index = Number(button.dataset.index);
-  if (button.dataset.action === 'edit') {
-    updateDependencies();
-    openModal(index);
-  } else if (button.dataset.action === 'delete') {
-    if (confirm(`Delete ${state.apps[index].title || state.apps[index].appName}?`)) {
-      state.apps.splice(index, 1);
+  const action = button.dataset.action;
+  if (action === 'edit') openModal(index);
+  if (action === 'clone') {
+    const clone = structuredClone(state.appsConfig[index]);
+    clone.title = `${clone.title} Copy`;
+    state.appsConfig.splice(index + 1, 0, clone);
+    renderApps();
+    refreshPreview();
+    toast('Application cloned');
+  }
+  if (action === 'delete') {
+    if (confirm(`Delete ${state.appsConfig[index].title || state.appsConfig[index].appName}?`)) {
+      state.appsConfig.splice(index, 1);
       renderApps();
       refreshPreview();
       toast('Application deleted');
     }
   }
 });
-
 $('appModal').addEventListener('click', e => { if (e.target === $('appModal')) closeModal(); });
