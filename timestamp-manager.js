@@ -2,6 +2,16 @@
   const $ = id => document.getElementById(id);
   const TYPES = ['image', 'support'];
 
+  // Auto increment is only armed by JSON import. A fresh configuration starts
+  // with timestamp 1 and never auto-increments. Each imported configuration
+  // increments at most once, on the first actual change. Manual timestamp edits
+  // permanently disarm auto-increment for that configuration.
+  const status = Object.fromEntries(TYPES.map(type => [type, {
+    imported: false,
+    autoIncrementPending: false,
+    manuallyEdited: false
+  }]));
+
   const numberTimestamp = value => {
     const n = Number.parseInt(String(value ?? '').trim(), 10);
     return Number.isFinite(n) && n >= 0 ? n : 0;
@@ -11,10 +21,7 @@
     if (type === 'image') return JSON.stringify(state.imageConfig?.config || []);
     if (type === 'support') {
       const s = state.supportConfig || {};
-      return JSON.stringify({
-        helpLine: s.helpLine || '',
-        preAuth: s.preAuth || {}
-      });
+      return JSON.stringify({ helpLine: s.helpLine || '', preAuth: s.preAuth || {} });
     }
     return '';
   };
@@ -29,19 +36,36 @@
     if (type === 'support') state.supportConfig.timeStamp = normalized;
   };
 
-  const capture = () => Object.fromEntries(TYPES.map(type => [type, {
-    content: contentSnapshot(type),
-    timestamp: String(getTimestamp(type) ?? '')
-  }]));
+  function markImported() {
+    TYPES.forEach(type => {
+      status[type].imported = true;
+      status[type].autoIncrementPending = true;
+      status[type].manuallyEdited = false;
+    });
+    updateHeaders();
+  }
+
+  function markFresh() {
+    TYPES.forEach(type => {
+      status[type].imported = false;
+      status[type].autoIncrementPending = false;
+      status[type].manuallyEdited = false;
+    });
+    updateHeaders();
+  }
 
   function processChanges(before) {
     TYPES.forEach(type => {
+      const current = status[type];
+      if (!current.imported || !current.autoIncrementPending || current.manuallyEdited) return;
+
       const afterContent = contentSnapshot(type);
-      const old = before[type];
-      if (old.content !== afterContent && String(getTimestamp(type) ?? '') === old.timestamp) {
-        setTimestamp(type, numberTimestamp(old.timestamp) + 1);
+      if (before[type].content !== afterContent) {
+        setTimestamp(type, numberTimestamp(before[type].timestamp) + 1);
+        current.autoIncrementPending = false;
       }
     });
+
     if (typeof renderAll === 'function') renderAll();
     if (typeof refreshPreview === 'function') refreshPreview();
     updateHeaders();
@@ -71,7 +95,15 @@
       if (typeof toast === 'function') toast('Time Stamp must be a non-negative number');
       return;
     }
+
     setTimestamp(type, value.trim());
+
+    // Manual timestamp is final. No future automatic increment for this config
+    // until the next JSON import.
+    status[type].manuallyEdited = true;
+    status[type].autoIncrementPending = false;
+    status[type].imported = false;
+
     updateHeaders();
     if (typeof renderAll === 'function') renderAll();
     if (typeof refreshPreview === 'function') refreshPreview();
@@ -98,15 +130,33 @@
     updateHeaders();
   }
 
-  // Capture BEFORE the configuration save runs. This must be synchronous because
-  // the save handler changes state during the same click event.
+  // Capture before the configuration save/delete handler changes state.
   document.addEventListener('click', event => {
     const save = event.target.closest('#saveConfigBtn');
     const deleteButton = event.target.closest('[data-delete-config]');
     if (!save && !deleteButton) return;
 
-    const before = capture();
+    const before = Object.fromEntries(TYPES.map(type => [type, {
+      content: contentSnapshot(type),
+      timestamp: String(getTimestamp(type) ?? '')
+    }]));
+
     setTimeout(() => processChanges(before), 0);
+  }, true);
+
+  // Import JSON is the only event that arms automatic timestamp increment.
+  document.addEventListener('change', event => {
+    if (event.target?.id === 'fileInput' && event.target.files?.length) {
+      // The actual import handler runs after this capture listener and replaces
+      // state with the imported values. Arm the one-time increment now.
+      markImported();
+    }
+  }, true);
+
+  // New configuration is a fresh state: timestamp remains at its initial value
+  // and no automatic increment is enabled.
+  document.addEventListener('click', event => {
+    if (event.target.closest('#newBtn')) markFresh();
   }, true);
 
   document.addEventListener('click', event => {
