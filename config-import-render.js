@@ -29,7 +29,13 @@
     imageList.innerHTML = images.length ? images.map((item, i) => shell(item.imageFileName || 'Unnamed Image', `<span>${esc(item.txnType || 'all')}</span><span class="meta-separator">·</span><span>${esc(item.startDate || '-')} → ${esc(item.endDate || '-')}</span>`, [badge('Image','blue-soft'),badge(item.txnType || 'all')], 'image', i)).join('') : '<div class="empty">No image configuration added yet.</div>';
 
     const pfxList = $('pfxConfigList');
-    pfxList.innerHTML = pfx.pfxFileName ? shell(pfx.pfxFileName || 'PFX Configuration','<span>Client certificate</span>',[badge('PFX','blue-soft')],'pfx',0) : '<div class="empty">No PFX configuration added yet.</div>';
+    pfxList.innerHTML = pfx.pfxFileName ? shell(
+      pfx.pfxFileName || 'PFX Configuration',
+      `<span>Client certificate</span><span class="meta-separator">·</span><span>Time Stamp: ${esc(pfx.timeStamp || '-')}</span>`,
+      [badge('PFX','blue-soft')],
+      'pfx',
+      0
+    ) : '<div class="empty">No PFX configuration added yet.</div>';
     if ($('addPfxBtn')) $('addPfxBtn').textContent = pfx.pfxFileName ? 'Edit PFX' : '+ Add PFX';
 
     const bannerList = $('bannerConfigList');
