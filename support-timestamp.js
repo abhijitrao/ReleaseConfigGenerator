@@ -16,6 +16,14 @@
     });
   }
 
+  function updateSupportTimestampBadge() {
+    const badge = $('supportTimestampBadge');
+    if (!badge || !window.state?.supportConfig) return;
+    const value = state.supportConfig.timeStamp;
+    badge.textContent = value ? `Time Stamp: ${value}` : '';
+    badge.classList.toggle('hidden', !value);
+  }
+
   function hideSupportTimestamp() {
     const input = $('cfgSupportTimestamp');
     if (!input) return;
@@ -45,6 +53,7 @@
 
     if (typeof renderAll === 'function') renderAll();
     if (typeof refreshPreview === 'function') refreshPreview();
+    updateSupportTimestampBadge();
   }
 
   document.addEventListener('click', event => {
@@ -60,14 +69,13 @@
       setTimeout(() => {
         incrementSupportTimestampIfChanged();
         beforeSnapshot = null;
+        updateSupportTimestampBadge();
       }, 0);
     });
   }
 
-  const deleteLists = ['supportConfigList'];
-  deleteLists.forEach(id => {
-    const list = $(id);
-    if (!list) return;
+  const list = $('supportConfigList');
+  if (list) {
     list.addEventListener('click', event => {
       const button = event.target.closest('[data-delete-config="support"]');
       if (!button) return;
@@ -79,7 +87,10 @@
           if (typeof renderAll === 'function') renderAll();
           if (typeof refreshPreview === 'function') refreshPreview();
         }
+        updateSupportTimestampBadge();
       }, 0);
     });
-  });
+  }
+
+  setInterval(updateSupportTimestampBadge, 200);
 })();
