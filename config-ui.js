@@ -2,54 +2,32 @@
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 
-  const defaultState = () => ({
+  const defaults = {
     imageConfig: { config: [], timeStamp: '' },
     pfxConfig: { pfxFileName: '', timeStamp: '' },
     bannerConfig: [],
-    supportConfig: {
-      timeStamp: '',
-      helpLine: '',
-      preAuth: { dateExceededMessage: '', amountLimitMessage: '', completionReminderMessage: '' }
-    }
-  });
+    supportConfig: { timeStamp: '', helpLine: '', preAuth: { dateExceededMessage: '', amountLimitMessage: '', completionReminderMessage: '' } }
+  };
+
+  const cloneDefaults = () => structuredClone(defaults);
+  let editingType = '';
+  let editingIndex = -1;
 
   function ensureState() {
-    state.imageConfig ||= defaultState().imageConfig;
-    state.pfxConfig ||= defaultState().pfxConfig;
+    state.imageConfig ||= { config: [], timeStamp: '' };
+    state.imageConfig.config ||= [];
+    state.pfxConfig ||= { pfxFileName: '', timeStamp: '' };
     state.bannerConfig ||= [];
-    state.supportConfig ||= defaultState().supportConfig;
-    state.supportConfig.preAuth ||= defaultState().supportConfig.preAuth;
+    state.supportConfig ||= structuredClone(defaults.supportConfig);
+    state.supportConfig.preAuth ||= structuredClone(defaults.supportConfig.preAuth);
   }
 
-  function syncFieldsFromState() {
+  function renderAll() {
     ensureState();
-    $('imageTimestamp').value = state.imageConfig.timeStamp || '';
-    $('pfxFileName').value = state.pfxConfig.pfxFileName || '';
-    $('pfxTimestamp').value = state.pfxConfig.timeStamp || '';
-    $('supportTimestamp').value = state.supportConfig.timeStamp || '';
-    $('helpLine').value = state.supportConfig.helpLine || '';
-    $('dateExceededMessage').value = state.supportConfig.preAuth.dateExceededMessage || '';
-    $('amountLimitMessage').value = state.supportConfig.preAuth.amountLimitMessage || '';
-    $('completionReminderMessage').value = state.supportConfig.preAuth.completionReminderMessage || '';
     renderImages();
+    renderPfx();
     renderBanners();
-  }
-
-  function syncStateFromFields() {
-    ensureState();
-    state.imageConfig.timeStamp = $('imageTimestamp').value.trim();
-    state.pfxConfig.pfxFileName = $('pfxFileName').value.trim();
-    state.pfxConfig.timeStamp = $('pfxTimestamp').value.trim();
-    state.supportConfig.timeStamp = $('supportTimestamp').value.trim();
-    state.supportConfig.helpLine = $('helpLine').value.trim();
-    state.supportConfig.preAuth.dateExceededMessage = $('dateExceededMessage').value;
-    state.supportConfig.preAuth.amountLimitMessage = $('amountLimitMessage').value;
-    state.supportConfig.preAuth.completionReminderMessage = $('completionReminderMessage').value;
-  }
-
-  function notifyPreview() {
-    syncStateFromFields();
-    refreshPreview();
+    renderSupport();
   }
 
   function renderImages() {
@@ -60,21 +38,28 @@
       return;
     }
     list.innerHTML = items.map((item, index) => `
-      <div class="config-item">
-        <div class="config-item-grid">
-          <div class="field"><label>Start Date</label><input type="date" data-image-field="startDate" data-index="${index}" value="${esc(item.startDate)}"></div>
-          <div class="field"><label>End Date</label><input type="date" data-image-field="endDate" data-index="${index}" value="${esc(item.endDate)}"></div>
-          <div class="field"><label>Image File Name</label><input data-image-field="imageFileName" data-index="${index}" value="${esc(item.imageFileName)}"></div>
-          <div class="field"><label>Transaction Type</label><input data-image-field="txnType" data-index="${index}" value="${esc(item.txnType)}" placeholder="all"></div>
+      <div class="config-summary">
+        <div class="config-summary-main">
+          <div class="config-summary-title">${esc(item.imageFileName || 'Unnamed Image')}</div>
+          <div class="config-summary-meta">${esc(item.txnType || 'all')} · ${esc(item.startDate || 'No start date')} → ${esc(item.endDate || 'No end date')}</div>
         </div>
-        <button type="button" class="danger-btn" data-remove-image="${index}">Remove</button>
+        <div class="config-summary-actions"><button type="button" data-edit-config="image" data-index="${index}">Edit</button><button type="button" class="danger-btn" data-delete-config="image" data-index="${index}">Delete</button></div>
       </div>`).join('');
   }
 
-  function addImage() {
-    ensureState();
-    state.imageConfig.config.push({ startDate: '', endDate: '', imageFileName: '', txnType: 'all' });
-    renderImages();
+  function renderPfx() {
+    const list = $('pfxConfigList');
+    const pfx = state.pfxConfig;
+    if (!pfx.pfxFileName && !pfx.timeStamp) {
+      list.innerHTML = '<div class="empty">No PFX configuration added yet.</div>';
+      $('addPfxBtn').textContent = '+ Add PFX';
+      return;
+    }
+    list.innerHTML = `<div class="config-summary">
+      <div class="config-summary-main"><div class="config-summary-title">${esc(pfx.pfxFileName || 'PFX Configuration')}</div><div class="config-summary-meta">Time Stamp: ${esc(pfx.timeStamp || '-')}</div></div>
+      <div class="config-summary-actions"><button type="button" data-edit-config="pfx" data-index="0">Edit</button><button type="button" class="danger-btn" data-delete-config="pfx" data-index="0">Delete</button></div>
+    </div>`;
+    $('addPfxBtn').textContent = 'Edit PFX';
   }
 
   function renderBanners() {
@@ -85,90 +70,140 @@
       return;
     }
     list.innerHTML = items.map((item, index) => `
-      <div class="config-item">
-        <div class="config-item-grid">
-          <div class="field"><label>Banner Name</label><input data-banner-field="bannerName" data-index="${index}" value="${esc(item.bannerName)}"></div>
-          <div class="field"><label>Banner ID</label><input data-banner-field="bannerId" data-index="${index}" value="${esc(item.bannerId)}"></div>
-          <div class="field"><label>Availability Type</label><select data-banner-field="availabilityType" data-index="${index}"><option value="0" ${Number(item.availabilityType) === 0 ? 'selected' : ''}>All</option><option value="1" ${Number(item.availabilityType) === 1 ? 'selected' : ''}>TID Based</option></select></div>
-          <div class="field"><label>TIDs</label><textarea rows="2" data-banner-field="tids" data-index="${index}" placeholder="One TID per line">${esc((item.tids || []).join('\n'))}</textarea></div>
+      <div class="config-summary">
+        <div class="config-summary-main">
+          <div class="config-summary-title">${esc(item.bannerName || 'Unnamed Banner')}</div>
+          <div class="config-summary-meta">ID: ${esc(item.bannerId || '-')} · ${Number(item.availabilityType) === 1 ? `TID Based · ${(item.tids || []).length} TID(s)` : 'All TIDs'}</div>
         </div>
-        <button type="button" class="danger-btn" data-remove-banner="${index}">Remove</button>
+        <div class="config-summary-actions"><button type="button" data-edit-config="banner" data-index="${index}">Edit</button><button type="button" class="danger-btn" data-delete-config="banner" data-index="${index}">Delete</button></div>
       </div>`).join('');
   }
 
-  function addBanner() {
+  function renderSupport() {
+    const list = $('supportConfigList');
+    const s = state.supportConfig;
+    const hasData = !!(s.timeStamp || s.helpLine || s.preAuth.dateExceededMessage || s.preAuth.amountLimitMessage || s.preAuth.completionReminderMessage);
+    if (!hasData) {
+      list.innerHTML = '<div class="empty">No support configuration added yet.</div>';
+      $('addSupportBtn').textContent = '+ Add Support';
+      return;
+    }
+    list.innerHTML = `<div class="config-summary">
+      <div class="config-summary-main"><div class="config-summary-title">Support & Pre-Auth</div><div class="config-summary-meta">Help Line: ${esc(s.helpLine || '-')} · Time Stamp: ${esc(s.timeStamp || '-')}</div></div>
+      <div class="config-summary-actions"><button type="button" data-edit-config="support" data-index="0">Edit</button><button type="button" class="danger-btn" data-delete-config="support" data-index="0">Delete</button></div>
+    </div>`;
+    $('addSupportBtn').textContent = 'Edit Support';
+  }
+
+  function showModal(type, index = -1) {
     ensureState();
-    state.bannerConfig.push({ bannerName: '', bannerId: '', availabilityType: 0, tids: [] });
-    renderBanners();
+    editingType = type;
+    editingIndex = index;
+    const body = $('configModalBody');
+    let title = 'Add Configuration';
+    let subtitle = 'Enter configuration details.';
+    let html = '';
+
+    if (type === 'image') {
+      title = index >= 0 ? 'Edit Image Configuration' : 'Add Image Configuration';
+      subtitle = 'Configure image file, date range and transaction type.';
+      const item = index >= 0 ? state.imageConfig.config[index] : { startDate: '', endDate: '', imageFileName: '', txnType: 'all' };
+      html = `<div class="form-grid"><div class="field"><label for="cfgStartDate">Start Date *</label><input id="cfgStartDate" type="date" value="${esc(item.startDate)}"></div><div class="field"><label for="cfgEndDate">End Date *</label><input id="cfgEndDate" type="date" value="${esc(item.endDate)}"></div></div><div class="form-grid single-row form-row"><div class="field"><label for="cfgImageFileName">Image File Name *</label><input id="cfgImageFileName" value="${esc(item.imageFileName)}"></div></div><div class="form-grid single-row"><div class="field"><label for="cfgTxnType">Transaction Type</label><input id="cfgTxnType" value="${esc(item.txnType || 'all')}" placeholder="all"></div></div>`;
+    } else if (type === 'pfx') {
+      title = state.pfxConfig.pfxFileName ? 'Edit PFX Configuration' : 'Add PFX Configuration';
+      subtitle = 'Configure the client certificate file.';
+      html = `<div class="form-grid"><div class="field"><label for="cfgPfxFileName">PFX File Name *</label><input id="cfgPfxFileName" value="${esc(state.pfxConfig.pfxFileName)}" placeholder="BHClient.p12"></div><div class="field"><label for="cfgPfxTimestamp">Time Stamp</label><input id="cfgPfxTimestamp" value="${esc(state.pfxConfig.timeStamp)}" placeholder="1"></div></div>`;
+    } else if (type === 'banner') {
+      title = index >= 0 ? 'Edit Banner Configuration' : 'Add Banner Configuration';
+      subtitle = 'Configure banner file and TID availability.';
+      const item = index >= 0 ? state.bannerConfig[index] : { bannerName: '', bannerId: '', availabilityType: 0, tids: [] };
+      html = `<div class="form-grid"><div class="field"><label for="cfgBannerName">Banner Name *</label><input id="cfgBannerName" value="${esc(item.bannerName)}"></div><div class="field"><label for="cfgBannerId">Banner ID</label><input id="cfgBannerId" value="${esc(item.bannerId)}"></div></div><div class="form-grid single-row form-row"><div class="field"><label for="cfgBannerAvailability">Availability Type</label><select id="cfgBannerAvailability"><option value="0" ${Number(item.availabilityType) === 0 ? 'selected' : ''}>All</option><option value="1" ${Number(item.availabilityType) === 1 ? 'selected' : ''}>TID Based</option></select></div></div><div id="cfgBannerTidWrap" class="section-block ${Number(item.availabilityType) === 1 ? '' : 'hidden'}"><h3>TIDs</h3><textarea id="cfgBannerTids" rows="5" placeholder="One TID per line">${esc((item.tids || []).join('\n'))}</textarea></div>`;
+    } else if (type === 'support') {
+      title = state.supportConfig.helpLine || state.supportConfig.timeStamp ? 'Edit Support Configuration' : 'Add Support Configuration';
+      subtitle = 'Configure help line and pre-auth messages.';
+      const s = state.supportConfig;
+      html = `<div class="form-grid"><div class="field"><label for="cfgSupportTimestamp">Time Stamp</label><input id="cfgSupportTimestamp" value="${esc(s.timeStamp)}"></div><div class="field"><label for="cfgHelpLine">Help Line</label><input id="cfgHelpLine" value="${esc(s.helpLine)}"></div></div><div class="section-block"><h3>Pre-Auth Messages</h3><div class="config-message-grid"><div class="field"><label for="cfgDateExceeded">Date Exceeded Message</label><textarea id="cfgDateExceeded" rows="3">${esc(s.preAuth.dateExceededMessage)}</textarea></div><div class="field"><label for="cfgAmountLimit">Amount Limit Message</label><textarea id="cfgAmountLimit" rows="3">${esc(s.preAuth.amountLimitMessage)}</textarea></div><div class="field"><label for="cfgCompletionReminder">Completion Reminder Message</label><textarea id="cfgCompletionReminder" rows="3">${esc(s.preAuth.completionReminderMessage)}</textarea></div></div></div>`;
+    }
+
+    $('configModalTitle').textContent = title;
+    $('configModalSubtitle').textContent = subtitle;
+    body.innerHTML = html;
+    $('configModal').classList.remove('hidden');
+    const first = body.querySelector('input, select, textarea');
+    if (first) first.focus();
+    if (type === 'banner') $('cfgBannerAvailability').addEventListener('change', () => $('cfgBannerTidWrap').classList.toggle('hidden', $('cfgBannerAvailability').value !== '1'));
   }
 
-  function bindFieldEvents() {
-    ['imageTimestamp','pfxFileName','pfxTimestamp','supportTimestamp','helpLine','dateExceededMessage','amountLimitMessage','completionReminderMessage'].forEach(id => $(id).addEventListener('input', notifyPreview));
-
-    $('imageConfigList').addEventListener('input', e => {
-      const field = e.target.dataset.imageField;
-      if (!field) return;
-      const index = Number(e.target.dataset.index);
-      state.imageConfig.config[index][field] = e.target.value;
-      refreshPreview();
-    });
-    $('imageConfigList').addEventListener('click', e => {
-      const button = e.target.closest('[data-remove-image]');
-      if (!button) return;
-      state.imageConfig.config.splice(Number(button.dataset.removeImage), 1);
-      renderImages();
-      refreshPreview();
-    });
-
-    $('bannerConfigList').addEventListener('input', e => updateBannerField(e));
-    $('bannerConfigList').addEventListener('change', e => updateBannerField(e));
-    $('bannerConfigList').addEventListener('click', e => {
-      const button = e.target.closest('[data-remove-banner]');
-      if (!button) return;
-      state.bannerConfig.splice(Number(button.dataset.removeBanner), 1);
-      renderBanners();
-      refreshPreview();
-    });
-
-    $('addImageBtn').addEventListener('click', () => { addImage(); refreshPreview(); });
-    $('addBannerBtn').addEventListener('click', () => { addBanner(); refreshPreview(); });
+  function closeModal() {
+    $('configModal').classList.add('hidden');
+    editingType = '';
+    editingIndex = -1;
   }
 
-  function updateBannerField(event) {
-    const field = event.target.dataset.bannerField;
-    if (!field) return;
-    const index = Number(event.target.dataset.index);
-    if (field === 'availabilityType') state.bannerConfig[index][field] = Number(event.target.value);
-    else if (field === 'tids') state.bannerConfig[index][field] = event.target.value.split(/\r?\n/).map(v => v.trim()).filter(Boolean);
-    else state.bannerConfig[index][field] = event.target.value;
+  function saveConfig() {
+    if (editingType === 'image') {
+      const item = { startDate: $('cfgStartDate').value, endDate: $('cfgEndDate').value, imageFileName: $('cfgImageFileName').value.trim(), txnType: $('cfgTxnType').value.trim() || 'all' };
+      if (!item.startDate || !item.endDate || !item.imageFileName) return toast('Start Date, End Date and Image File Name are required');
+      if (editingIndex >= 0) state.imageConfig.config[editingIndex] = item; else state.imageConfig.config.push(item);
+    } else if (editingType === 'pfx') {
+      const fileName = $('cfgPfxFileName').value.trim();
+      if (!fileName) return toast('PFX File Name is required');
+      state.pfxConfig = { pfxFileName: fileName, timeStamp: $('cfgPfxTimestamp').value.trim() };
+    } else if (editingType === 'banner') {
+      const item = { bannerName: $('cfgBannerName').value.trim(), bannerId: $('cfgBannerId').value.trim(), availabilityType: Number($('cfgBannerAvailability').value), tids: $('cfgBannerAvailability').value === '1' ? $('cfgBannerTids').value.split(/\r?\n/).map(v => v.trim()).filter(Boolean) : [] };
+      if (!item.bannerName) return toast('Banner Name is required');
+      if (editingIndex >= 0) state.bannerConfig[editingIndex] = item; else state.bannerConfig.push(item);
+    } else if (editingType === 'support') {
+      state.supportConfig = { timeStamp: $('cfgSupportTimestamp').value.trim(), helpLine: $('cfgHelpLine').value.trim(), preAuth: { dateExceededMessage: $('cfgDateExceeded').value, amountLimitMessage: $('cfgAmountLimit').value, completionReminderMessage: $('cfgCompletionReminder').value } };
+    }
+    renderAll();
     refreshPreview();
+    closeModal();
+    toast('Configuration saved');
   }
 
-  const originalBuildOutput = window.buildOutput;
-  window.buildOutput = function () {
-    syncStateFromFields();
-    const output = originalBuildOutput();
-    output.imageConfig = state.imageConfig;
-    output.pfxConfig = state.pfxConfig;
-    output.bannerConfig = state.bannerConfig;
-    output.supportConfig = state.supportConfig;
-    return output;
-  };
+  function deleteConfig(type, index) {
+    if (!confirm('Delete this configuration?')) return;
+    if (type === 'image') state.imageConfig.config.splice(index, 1);
+    if (type === 'banner') state.bannerConfig.splice(index, 1);
+    if (type === 'pfx') state.pfxConfig = { pfxFileName: '', timeStamp: '' };
+    if (type === 'support') state.supportConfig = structuredClone(defaults.supportConfig);
+    renderAll();
+    refreshPreview();
+    toast('Configuration deleted');
+  }
+
+  function bindEvents() {
+    $('addImageBtn').addEventListener('click', () => showModal('image'));
+    $('addPfxBtn').addEventListener('click', () => showModal('pfx'));
+    $('addBannerBtn').addEventListener('click', () => showModal('banner'));
+    $('addSupportBtn').addEventListener('click', () => showModal('support'));
+    $('closeConfigModalBtn').addEventListener('click', closeModal);
+    $('cancelConfigBtn').addEventListener('click', closeModal);
+    $('saveConfigBtn').addEventListener('click', saveConfig);
+    $('configModal').addEventListener('click', e => { if (e.target === $('configModal')) closeModal(); });
+
+    ['imageConfigList', 'pfxConfigList', 'bannerConfigList', 'supportConfigList'].forEach(id => $(id).addEventListener('click', e => {
+      const edit = e.target.closest('[data-edit-config]');
+      const del = e.target.closest('[data-delete-config]');
+      if (edit) showModal(edit.dataset.editConfig, Number(edit.dataset.index));
+      if (del) deleteConfig(del.dataset.deleteConfig, Number(del.dataset.index));
+    }));
+  }
 
   const originalImportJson = window.importJson;
-  window.importJson = function (file) {
+  window.importJson = function(file) {
     originalImportJson(file);
-    setTimeout(syncFieldsFromState, 0);
+    setTimeout(() => { ensureState(); renderAll(); }, 0);
   };
 
-  const originalNewHandler = $('newBtn').onclick;
   $('newBtn').addEventListener('click', () => {
-    Object.assign(state, defaultState());
-    syncFieldsFromState();
+    Object.assign(state, cloneDefaults());
+    renderAll();
     refreshPreview();
   });
 
   ensureState();
-  bindFieldEvents();
-  syncFieldsFromState();
+  bindEvents();
+  renderAll();
 })();
