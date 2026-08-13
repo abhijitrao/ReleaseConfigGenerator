@@ -49,6 +49,20 @@
     supportList.innerHTML=hasSupport? shell('Support & Pre-Auth',`<span>Help Line: ${esc(support.helpLine || '-')}</span><span class="meta-separator">·</span><span>Time Stamp: ${esc(support.timeStamp || '-')}</span>`,[badge('Support','blue-soft'),support.helpLine?badge(`Help Line ${support.helpLine}`):'',badge(`${messageCount} Pre-Auth Message${messageCount===1?'':'s'}`)],'support',0,details?`<div class="config-preview-line support-preview"><span class="config-preview-label">Pre-Auth</span><div class="support-message-list">${details}</div></div>`:''):'<div class="empty">No support configuration added yet.</div>';
   }
 
+  function normalizeApplicationTidInput() {
+    const textarea = $('tids');
+    if (!textarea) return;
+    textarea.value = textarea.value.split(/[,\r\n]+/).map(v => v.trim()).filter(Boolean).join('\n');
+  }
+
+  document.addEventListener('click', event => {
+    const saveButton = event.target.closest('#saveAppBtn');
+    if (saveButton) normalizeApplicationTidInput();
+  }, true);
+
+  const tidInput = $('tids');
+  if (tidInput) tidInput.placeholder = 'One TID per line or comma-separated TIDs';
+
   function sync(){const preview=$('jsonPreview');if(!preview||!preview.value||preview.value===lastJson)return;try{const data=JSON.parse(preview.value);render(data);lastJson=preview.value;}catch(_){} }
   setInterval(sync,150); sync();
 })();
