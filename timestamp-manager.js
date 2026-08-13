@@ -2,10 +2,13 @@
   const $ = id => document.getElementById(id);
   const TYPES = ['image', 'support'];
 
-  // Auto increment is only armed by JSON import. A fresh configuration starts
-  // with timestamp 1 and never auto-increments. Each imported configuration
-  // increments at most once, on the first actual change. Manual timestamp edits
-  // permanently disarm auto-increment for that configuration.
+  // Timestamp rules:
+  // 1. Fresh/new configuration starts at 1 and never auto-increments.
+  // 2. Import arms exactly one automatic increment per configuration.
+  // 3. After the first actual add/edit/delete change, that imported timestamp
+  //    increments once and automatic increment is permanently disarmed.
+  // 4. Manual timestamp edit is final and permanently disarms auto-increment
+  //    until the next JSON import.
   const status = Object.fromEntries(TYPES.map(type => [type, {
     imported: false,
     autoIncrementPending: false,
@@ -36,6 +39,17 @@
     if (type === 'support') state.supportConfig.timeStamp = normalized;
   };
 
+  function setFreshTimestamp() {
+    TYPES.forEach(type => {
+      const value = getTimestamp(type);
+      if (value === '' || value == null) setTimestamp(type, 1);
+      status[type].imported = false;
+      status[type].autoIncrementPending = false;
+      status[type].manuallyEdited = false;
+    });
+    updateHeaders();
+  }
+
   function markImported() {
     TYPES.forEach(type => {
       status[type].imported = true;
@@ -46,6 +60,8 @@
   }
 
   function markFresh() {
+    // New/fresh configuration always starts at 1. No automatic increment.
+    TYPES.forEach(type => setTimestamp(type, 1));
     TYPES.forEach(type => {
       status[type].imported = false;
       status[type].autoIncrementPending = false;
@@ -62,6 +78,7 @@
       const afterContent = contentSnapshot(type);
       if (before[type].content !== afterContent) {
         setTimestamp(type, numberTimestamp(before[type].timestamp) + 1);
+        // Critical: this import has now consumed its single automatic bump.
         current.autoIncrementPending = false;
       }
     });
@@ -89,7 +106,7 @@
 
   function editTimestamp(type) {
     const current = getTimestamp(type);
-    const value = window.prompt(`Edit ${type === 'image' ? 'Image' : 'Support'} Time Stamp`, String(current ?? 0));
+    const value = window.prompt(`Edit ${type === 'image' ? 'Image' : 'Support'} Time Stamp`, String(current ?? 1));
     if (value === null) return;
     if (!/^\d+$/.test(value.trim())) {
       if (typeof toast === 'function') toast('Time Stamp must be a non-negative number');
@@ -98,8 +115,8 @@
 
     setTimestamp(type, value.trim());
 
-    // Manual timestamp is final. No future automatic increment for this config
-    // until the next JSON import.
+    // Manual timestamp is final. No future automatic increment until another
+    // JSON import explicitly arms the automation again.
     status[type].manuallyEdited = true;
     status[type].autoIncrementPending = false;
     status[type].imported = false;
@@ -130,7 +147,7 @@
     updateHeaders();
   }
 
-  // Capture before the configuration save/delete handler changes state.
+  // Capture the imported configuration state BEFORE save/delete mutates state.
   document.addEventListener('click', event => {
     const save = event.target.closest('#saveConfigBtn');
     const deleteButton = event.target.closest('[data-delete-config]');
@@ -144,17 +161,14 @@
     setTimeout(() => processChanges(before), 0);
   }, true);
 
-  // Import JSON is the only event that arms automatic timestamp increment.
+  // Import is the ONLY event that arms automatic timestamp increment.
   document.addEventListener('change', event => {
     if (event.target?.id === 'fileInput' && event.target.files?.length) {
-      // The actual import handler runs after this capture listener and replaces
-      // state with the imported values. Arm the one-time increment now.
       markImported();
     }
   }, true);
 
-  // New configuration is a fresh state: timestamp remains at its initial value
-  // and no automatic increment is enabled.
+  // New/fresh configuration: reset timestamps to 1 and disable automation.
   document.addEventListener('click', event => {
     if (event.target.closest('#newBtn')) markFresh();
   }, true);
@@ -165,6 +179,7 @@
   });
 
   const boot = () => {
+    setFreshTimestamp();
     addEditButtons();
     updateHeaders();
   };
