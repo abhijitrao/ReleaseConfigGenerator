@@ -10,7 +10,7 @@
 <body>
 <header class="topbar">
   <div><h1>AppStore - Config Manager</h1><p>AppStore configuration generator</p></div>
-  <div class="toolbar"><button id="importBtn">Import JSON</button><button id="newBtn">New</button><button id="downloadBtn" class="primary">Download JSON</button><input id="fileInput" type="file" accept="application/json,.json" hidden /></div>
+  <div class="toolbar"><button id="validateJsonBtn">Validate JSON</button><button id="importBtn">Import JSON</button><button id="newBtn">New</button><button id="downloadBtn" class="primary">Download JSON</button><input id="fileInput" type="file" accept="application/json,.json" hidden /></div>
 </header>
 <main class="layout">
   <section class="editor-pane">
@@ -28,6 +28,6 @@
 <div id="jsonFullScreenModal" class="json-fullscreen-modal hidden" role="dialog" aria-modal="true" aria-labelledby="jsonFullScreenTitle"><div class="json-fullscreen-dialog"><div class="json-fullscreen-header"><div><h2 id="jsonFullScreenTitle">JSON Preview</h2><p>Full screen configuration preview</p></div><div class="preview-actions"><button id="fullScreenCopyBtn">Copy</button><button id="closeJsonFullScreenBtn" class="icon-btn" aria-label="Close">×</button></div></div><textarea id="jsonFullScreenPreview" spellcheck="false" readonly></textarea></div></div>
 <div id="toast" class="toast"></div>
 <footer class="app-footer"><span>Version-</span><span>1.1</span></footer>
-<script src="script.js?v=202608131230"></script><script src="config-ui.js?v=202608131230"></script><script src="config-import-render.js?v=202608131500"></script><script src="timestamp-manager.js?v=202608131500"></script><script src="modal-behavior.js?v=202608131600"></script><script src="version.js?v=202608131700"></script>
+<script src="script.js?v=202608131230"></script><script src="config-ui.js?v=202608131230"></script><script src="config-import-render.js?v=202608131500"></script><script src="timestamp-manager.js?v=202608131500"></script><script src="modal-behavior.js?v=202608131600"></script><script src="version.js?v=202608131700"></script><script src="json-validator.js?v=202608131800"></script>
 </body>
 </html>
