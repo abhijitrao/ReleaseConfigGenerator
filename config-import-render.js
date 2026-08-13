@@ -75,4 +75,12 @@
 
   setInterval(sync, 150);
   sync();
+
+  // Load the timestamp manager after the existing configuration UI/import renderer.
+  if (!document.querySelector('script[data-timestamp-manager]')) {
+    const script = document.createElement('script');
+    script.src = 'timestamp-manager.js?v=202608131400';
+    script.dataset.timestampManager = 'true';
+    document.body.appendChild(script);
+  }
 })();
