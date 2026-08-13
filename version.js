@@ -1,0 +1,1 @@
+window.RELEASE_CONFIG_TOOL_VERSION = '1.0';
