@@ -1,6 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[c]));
 
   const defaults = {
     imageConfig: { config: [], timeStamp: '' },
@@ -13,6 +13,10 @@
   let editingType = '';
   let editingIndex = -1;
 
+  const badge = (text, tone = '') => `<span class="badge ${tone}">${esc(text)}</span>`;
+  const actions = (type, index) => `<div class="app-actions"><button type="button" data-edit-config="${type}" data-index="${index}">Edit</button><button type="button" class="danger-btn" data-delete-config="${type}" data-index="${index}">Delete</button></div>`;
+  const shell = (title, meta, badges, type, index, extra = '') => `<div class="config-app-row"><div class="config-app-main"><div class="config-app-title">${esc(title)}</div><div class="config-app-meta">${meta}</div>${extra}<div class="badges">${badges.filter(Boolean).join('')}</div></div>${actions(type, index)}</div>`;
+
   function ensureState() {
     state.imageConfig ||= { config: [], timeStamp: '' };
     state.imageConfig.config ||= [];
@@ -22,29 +26,24 @@
     state.supportConfig.preAuth ||= structuredClone(defaults.supportConfig.preAuth);
   }
 
-  function renderAll() {
-    ensureState();
-    renderImages();
-    renderPfx();
-    renderBanners();
-    renderSupport();
-  }
-
   function renderImages() {
     const list = $('imageConfigList');
     const items = state.imageConfig.config || [];
+    const timestamp = $('imageTimestampBadge');
+    if (timestamp) {
+      timestamp.textContent = state.imageConfig.timeStamp ? `Time Stamp: ${state.imageConfig.timeStamp}` : '';
+      timestamp.classList.toggle('hidden', !state.imageConfig.timeStamp);
+    }
     if (!items.length) {
       list.innerHTML = '<div class="empty">No image configuration added yet.</div>';
       return;
     }
-    list.innerHTML = items.map((item, index) => `
-      <div class="config-summary">
-        <div class="config-summary-main">
-          <div class="config-summary-title">${esc(item.imageFileName || 'Unnamed Image')}</div>
-          <div class="config-summary-meta">${esc(item.txnType || 'all')} · ${esc(item.startDate || 'No start date')} → ${esc(item.endDate || 'No end date')}</div>
-        </div>
-        <div class="config-summary-actions"><button type="button" data-edit-config="image" data-index="${index}">Edit</button><button type="button" class="danger-btn" data-delete-config="image" data-index="${index}">Delete</button></div>
-      </div>`).join('');
+    list.innerHTML = items.map((item, index) => shell(
+      item.imageFileName || 'Unnamed Image',
+      `<span>${esc(item.txnType || 'all')}</span><span class="meta-separator">·</span><span>${esc(item.startDate || '-')} → ${esc(item.endDate || '-')}</span>`,
+      [badge('Image', 'blue-soft'), badge(item.txnType || 'all')],
+      'image', index
+    )).join('');
   }
 
   function renderPfx() {
@@ -55,10 +54,12 @@
       $('addPfxBtn').textContent = '+ Add PFX';
       return;
     }
-    list.innerHTML = `<div class="config-summary">
-      <div class="config-summary-main"><div class="config-summary-title">${esc(pfx.pfxFileName || 'PFX Configuration')}</div><div class="config-summary-meta">Time Stamp: ${esc(pfx.timeStamp || '-')}</div></div>
-      <div class="config-summary-actions"><button type="button" data-edit-config="pfx" data-index="0">Edit</button><button type="button" class="danger-btn" data-delete-config="pfx" data-index="0">Delete</button></div>
-    </div>`;
+    list.innerHTML = shell(
+      pfx.pfxFileName || 'PFX Configuration',
+      `<span>Client certificate</span><span class="meta-separator">·</span><span>Time Stamp: ${esc(pfx.timeStamp || '-')}</span>`,
+      [badge('PFX', 'blue-soft'), pfx.timeStamp ? badge(`Time Stamp ${pfx.timeStamp}`) : ''],
+      'pfx', 0
+    );
     $('addPfxBtn').textContent = 'Edit PFX';
   }
 
@@ -69,14 +70,15 @@
       list.innerHTML = '<div class="empty">No banner configuration added yet.</div>';
       return;
     }
-    list.innerHTML = items.map((item, index) => `
-      <div class="config-summary">
-        <div class="config-summary-main">
-          <div class="config-summary-title">${esc(item.bannerName || 'Unnamed Banner')}</div>
-          <div class="config-summary-meta">ID: ${esc(item.bannerId || '-')} · ${Number(item.availabilityType) === 1 ? `TID Based · ${(item.tids || []).length} TID(s)` : 'All TIDs'}</div>
-        </div>
-        <div class="config-summary-actions"><button type="button" data-edit-config="banner" data-index="${index}">Edit</button><button type="button" class="danger-btn" data-delete-config="banner" data-index="${index}">Delete</button></div>
-      </div>`).join('');
+    list.innerHTML = items.map((item, index) => {
+      const tidCount = Array.isArray(item.tids) ? item.tids.length : 0;
+      return shell(
+        item.bannerName || 'Unnamed Banner',
+        `<span>Banner ID: ${esc(item.bannerId || '-')}</span><span class="meta-separator">·</span><span>${Number(item.availabilityType) === 1 ? `TID Based · ${tidCount} TID(s)` : 'All TIDs'}</span>`,
+        [badge('Banner', 'blue-soft'), badge(Number(item.availabilityType) === 1 ? 'TID Based' : 'All TIDs'), item.bannerId ? badge(`ID ${item.bannerId}`) : ''],
+        'banner', index
+      );
+    }).join('');
   }
 
   function renderSupport() {
@@ -88,11 +90,29 @@
       $('addSupportBtn').textContent = '+ Add Support';
       return;
     }
-    list.innerHTML = `<div class="config-summary">
-      <div class="config-summary-main"><div class="config-summary-title">Support & Pre-Auth</div><div class="config-summary-meta">Help Line: ${esc(s.helpLine || '-')} · Time Stamp: ${esc(s.timeStamp || '-')}</div></div>
-      <div class="config-summary-actions"><button type="button" data-edit-config="support" data-index="0">Edit</button><button type="button" class="danger-btn" data-delete-config="support" data-index="0">Delete</button></div>
-    </div>`;
+    const messages = [
+      ['Date Exceeded', s.preAuth.dateExceededMessage],
+      ['Amount Limit', s.preAuth.amountLimitMessage],
+      ['Completion Reminder', s.preAuth.completionReminderMessage]
+    ];
+    const messageCount = messages.filter(([, value]) => value).length;
+    const preAuthDetails = messages.map(([label, value]) => value ? `<div class="support-message"><span class="config-preview-label">${esc(label)}</span><span>${esc(value)}</span></div>` : '').filter(Boolean).join('');
+    list.innerHTML = shell(
+      'Support & Pre-Auth',
+      `<span>Help Line: ${esc(s.helpLine || '-')}</span><span class="meta-separator">·</span><span>Time Stamp: ${esc(s.timeStamp || '-')}</span>`,
+      [badge('Support', 'blue-soft'), s.helpLine ? badge(`Help Line ${s.helpLine}`) : '', badge(`${messageCount} Pre-Auth Message${messageCount === 1 ? '' : 's'}`)],
+      'support', 0,
+      preAuthDetails ? `<div class="config-preview-line support-preview"><span class="config-preview-label">Pre-Auth</span><div class="support-message-list">${preAuthDetails}</div></div>` : ''
+    );
     $('addSupportBtn').textContent = 'Edit Support';
+  }
+
+  function renderAll() {
+    ensureState();
+    renderImages();
+    renderPfx();
+    renderBanners();
+    renderSupport();
   }
 
   function showModal(type, index = -1) {
@@ -190,9 +210,6 @@
       if (del) deleteConfig(del.dataset.deleteConfig, Number(del.dataset.index));
     }));
 
-    // script.js owns the actual application import. Its importJson function is
-    // scoped to that script, so keep the configuration sections synchronized
-    // by reading the same selected JSON file here as well.
     $('fileInput').addEventListener('change', e => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -208,7 +225,7 @@
           renderAll();
           refreshPreview();
         } catch {
-          // script.js already reports invalid JSON; no duplicate message needed.
+          // script.js already reports invalid JSON.
         }
       };
       reader.readAsText(file);
