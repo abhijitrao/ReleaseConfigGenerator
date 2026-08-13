@@ -26,7 +26,32 @@
       <div class="card-title-row"><div><h2>Applications</h2><p>Manage release applications and their dependencies.</p></div><button id="addAppBtn" class="primary">+ Add Application</button></div>
       <div id="appsContainer" class="apps-container"></div>
     </div>
+
+    <div class="card config-card">
+      <div class="card-title-row"><div><h2>Image Configuration</h2><p>Manage transaction image configurations.</p></div><button id="addImageBtn">+ Add Image</button></div>
+      <div id="imageConfigList" class="config-list"></div>
+      <div class="config-footer"><div class="field-inline"><label for="imageTimeStamp">Time Stamp</label><input id="imageTimeStamp" /></div></div>
+    </div>
+
+    <div class="card config-card">
+      <div class="card-title-row"><div><h2>PFX Configuration</h2><p>Configure the client certificate file.</p></div></div>
+      <div class="form-grid"><div class="field"><label for="pfxFileName">PFX File Name</label><input id="pfxFileName" placeholder="BHClient.p12" /></div><div class="field"><label for="pfxTimeStamp">Time Stamp</label><input id="pfxTimeStamp" /></div></div>
+    </div>
+
+    <div class="card config-card">
+      <div class="card-title-row"><div><h2>Banner Configuration</h2><p>Manage AppStore banner files.</p></div><button id="addBannerBtn">+ Add Banner</button></div>
+      <div id="bannerConfigList" class="config-list"></div>
+    </div>
+
+    <div class="card config-card">
+      <div class="card-title-row"><div><h2>Support Configuration</h2><p>Configure support and pre-auth messages.</p></div></div>
+      <div class="form-grid"><div class="field"><label for="supportTimeStamp">Time Stamp</label><input id="supportTimeStamp" /></div><div class="field"><label for="helpLine">Help Line</label><input id="helpLine" /></div></div>
+      <div class="subsection-title">Pre-Auth Messages</div>
+      <div class="form-grid"><div class="field"><label for="dateExceededMessage">Date Exceeded Message</label><textarea id="dateExceededMessage" rows="3"></textarea></div><div class="field"><label for="amountLimitMessage">Amount Limit Message</label><textarea id="amountLimitMessage" rows="3"></textarea></div></div>
+      <div class="field form-row"><label for="completionReminderMessage">Completion Reminder Message</label><textarea id="completionReminderMessage" rows="3"></textarea></div>
+    </div>
   </section>
+
   <aside class="preview-pane"><div class="card preview-card"><div class="card-title-row"><div><h2>JSON Preview</h2><p>Generated output updates automatically.</p></div><div class="preview-actions"><button id="fullScreenBtn">Full Screen</button><button id="copyBtn">Copy</button></div></div><textarea id="jsonPreview" spellcheck="false" readonly></textarea></div></aside>
 </main>
 
@@ -50,13 +75,11 @@
 </div>
 
 <div id="jsonFullScreenModal" class="json-fullscreen-modal hidden" role="dialog" aria-modal="true" aria-labelledby="jsonFullScreenTitle">
-  <div class="json-fullscreen-dialog">
-    <div class="json-fullscreen-header"><div><h2 id="jsonFullScreenTitle">JSON Preview</h2><p>Full screen configuration preview</p></div><div class="preview-actions"><button id="fullScreenCopyBtn">Copy</button><button id="closeJsonFullScreenBtn" class="icon-btn" aria-label="Close">×</button></div></div>
-    <textarea id="jsonFullScreenPreview" spellcheck="false" readonly></textarea>
-  </div>
+  <div class="json-fullscreen-dialog"><div class="json-fullscreen-header"><div><h2 id="jsonFullScreenTitle">JSON Preview</h2><p>Full screen configuration preview</p></div><div class="preview-actions"><button id="fullScreenCopyBtn">Copy</button><button id="closeJsonFullScreenBtn" class="icon-btn" aria-label="Close">×</button></div></div><textarea id="jsonFullScreenPreview" spellcheck="false" readonly></textarea></div>
 </div>
 
 <div id="toast" class="toast"></div>
 <script src="script.js"></script>
+<script src="config.js"></script>
 </body>
 </html>
