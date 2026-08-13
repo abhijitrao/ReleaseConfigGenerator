@@ -3,15 +3,13 @@
   const TYPES = ['image', 'support'];
 
   // Timestamp rules:
-  // 1. Fresh/new configuration starts at 1 and never auto-increments.
-  // 2. Import arms exactly one automatic increment per configuration.
-  // 3. After the first actual add/edit/delete change, that imported timestamp
-  //    increments once and automatic increment is permanently disarmed.
-  // 4. Manual timestamp edit is final and permanently disarms auto-increment
-  //    until the next JSON import.
+  // 1. Fresh configuration starts at 0.
+  // 2. The first actual change makes it 1. Further fresh changes do not auto-increment.
+  // 3. Imported configuration keeps its timestamp and the first actual change increments it once.
+  // 4. Manual timestamp edit is final and disables automatic increment until the next import.
   const status = Object.fromEntries(TYPES.map(type => [type, {
     imported: false,
-    autoIncrementPending: false,
+    autoIncrementPending: true,
     manuallyEdited: false
   }]));
 
@@ -24,10 +22,15 @@
     if (type === 'image') return JSON.stringify(state.imageConfig?.config || []);
     if (type === 'support') {
       const s = state.supportConfig || {};
-      return JSON.stringify({ helpLine: s.helpLine || '', preAuth: s.preAuth || {} });
+      return JSON.stringify({
+        helpLine: s.helpLine || '',
+        preAuth: s.preAuth || {}
+      });
     }
     return '';
   };
+
+  const hasContent = type => contentSnapshot(type) !== (type === 'image' ? '[]' : '{"helpLine":"","preAuth":{}}');
 
   const getTimestamp = type => type === 'image'
     ? state.imageConfig?.timeStamp
@@ -39,15 +42,13 @@
     if (type === 'support') state.supportConfig.timeStamp = normalized;
   };
 
-  function setFreshTimestamp() {
-    TYPES.forEach(type => {
-      const value = getTimestamp(type);
-      if (value === '' || value == null) setTimestamp(type, 1);
-      status[type].imported = false;
-      status[type].autoIncrementPending = false;
-      status[type].manuallyEdited = false;
-    });
-    updateHeaders();
+  function ensureInitialTimestamps() {
+    if (state.imageConfig && (state.imageConfig.timeStamp === '' || state.imageConfig.timeStamp == null)) {
+      state.imageConfig.timeStamp = '0';
+    }
+    if (state.supportConfig && (state.supportConfig.timeStamp === '' || state.supportConfig.timeStamp == null)) {
+      state.supportConfig.timeStamp = '0';
+    }
   }
 
   function markImported() {
@@ -56,36 +57,65 @@
       status[type].autoIncrementPending = true;
       status[type].manuallyEdited = false;
     });
-    updateHeaders();
+
+    // Let the real import handler replace state first, then normalize missing timestamps.
+    setTimeout(() => {
+      ensureInitialTimestamps();
+      updateHeaders();
+      cleanupEmptySupport();
+    }, 0);
   }
 
   function markFresh() {
-    // New/fresh configuration always starts at 1. No automatic increment.
-    TYPES.forEach(type => setTimestamp(type, 1));
     TYPES.forEach(type => {
       status[type].imported = false;
-      status[type].autoIncrementPending = false;
+      status[type].autoIncrementPending = true;
       status[type].manuallyEdited = false;
     });
-    updateHeaders();
+
+    setTimeout(() => {
+      ensureInitialTimestamps();
+      updateHeaders();
+      cleanupEmptySupport();
+    }, 0);
   }
 
   function processChanges(before) {
     TYPES.forEach(type => {
       const current = status[type];
-      if (!current.imported || !current.autoIncrementPending || current.manuallyEdited) return;
+      if (!current.autoIncrementPending || current.manuallyEdited) return;
 
       const afterContent = contentSnapshot(type);
       if (before[type].content !== afterContent) {
-        setTimestamp(type, numberTimestamp(before[type].timestamp) + 1);
-        // Critical: this import has now consumed its single automatic bump.
+        const oldTimestamp = numberTimestamp(before[type].timestamp);
+        setTimestamp(type, oldTimestamp + 1);
         current.autoIncrementPending = false;
       }
     });
 
     if (typeof renderAll === 'function') renderAll();
+    cleanupEmptySupport();
     if (typeof refreshPreview === 'function') refreshPreview();
+    cleanupEmptySupport();
     updateHeaders();
+  }
+
+  function cleanupEmptySupport() {
+    const list = $('supportConfigList');
+    const button = $('addSupportBtn');
+    if (!list || !state.supportConfig) return;
+
+    const hasSupportData = !!(
+      state.supportConfig.helpLine ||
+      state.supportConfig.preAuth?.dateExceededMessage ||
+      state.supportConfig.preAuth?.amountLimitMessage ||
+      state.supportConfig.preAuth?.completionReminderMessage
+    );
+
+    if (!hasSupportData) {
+      list.innerHTML = '<div class="empty">No support configuration added yet.</div>';
+      if (button) button.textContent = '+ Add Support';
+    }
   }
 
   function updateHeaders() {
@@ -106,7 +136,7 @@
 
   function editTimestamp(type) {
     const current = getTimestamp(type);
-    const value = window.prompt(`Edit ${type === 'image' ? 'Image' : 'Support'} Time Stamp`, String(current ?? 1));
+    const value = window.prompt(`Edit ${type === 'image' ? 'Image' : 'Support'} Time Stamp`, String(current ?? 0));
     if (value === null) return;
     if (!/^\d+$/.test(value.trim())) {
       if (typeof toast === 'function') toast('Time Stamp must be a non-negative number');
@@ -115,15 +145,16 @@
 
     setTimestamp(type, value.trim());
 
-    // Manual timestamp is final. No future automatic increment until another
-    // JSON import explicitly arms the automation again.
+    // Manual timestamp is final. No future automatic increment until next JSON import.
     status[type].manuallyEdited = true;
     status[type].autoIncrementPending = false;
     status[type].imported = false;
 
     updateHeaders();
     if (typeof renderAll === 'function') renderAll();
+    cleanupEmptySupport();
     if (typeof refreshPreview === 'function') refreshPreview();
+    cleanupEmptySupport();
     if (typeof toast === 'function') toast('Time Stamp updated');
   }
 
@@ -144,10 +175,12 @@
       edit.textContent = '✎';
       holder.insertBefore(edit, button);
     });
+    ensureInitialTimestamps();
+    cleanupEmptySupport();
     updateHeaders();
   }
 
-  // Capture the imported configuration state BEFORE save/delete mutates state.
+  // Capture before configuration save/delete changes state.
   document.addEventListener('click', event => {
     const save = event.target.closest('#saveConfigBtn');
     const deleteButton = event.target.closest('[data-delete-config]');
@@ -161,14 +194,14 @@
     setTimeout(() => processChanges(before), 0);
   }, true);
 
-  // Import is the ONLY event that arms automatic timestamp increment.
+  // Import is the only event that arms the imported configuration for its one automatic increment.
   document.addEventListener('change', event => {
     if (event.target?.id === 'fileInput' && event.target.files?.length) {
       markImported();
     }
   }, true);
 
-  // New/fresh configuration: reset timestamps to 1 and disable automation.
+  // New configuration starts at 0 and allows only its first actual change to become 1.
   document.addEventListener('click', event => {
     if (event.target.closest('#newBtn')) markFresh();
   }, true);
@@ -179,7 +212,6 @@
   });
 
   const boot = () => {
-    setFreshTimestamp();
     addEditButtons();
     updateHeaders();
   };
