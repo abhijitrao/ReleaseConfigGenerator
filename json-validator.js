@@ -82,7 +82,13 @@
       data.appsConfig.forEach(app => (app.dependency || []).forEach(dep => dependencyKeys.add(`${dep.packageName}|${dep.appVersion}`)));
       data.appsConfig.forEach((app,i) => {
         const key=`${app.packageName}|${app.appVersion}`;
-        if (dependencyKeys.has(key) && app.autoInstall !== false) error(`appsConfig[${i}].autoInstall`, 'must be false because this application is used as a dependency.');
+        const isDependency = dependencyKeys.has(key);
+        if (isDependency && app.autoInstall !== false) {
+          error(`appsConfig[${i}].autoInstall`, 'must be false because this application is used as a dependency.');
+        }
+        if (!isDependency && app.autoInstall === false && hasText(app.packageName) && hasText(app.appVersion)) {
+          error(`appsConfig[${i}].autoInstall`, 'must be true because this application is not used as a dependency.');
+        }
       });
     }
 
