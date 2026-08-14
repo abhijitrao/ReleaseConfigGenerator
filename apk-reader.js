@@ -32,7 +32,7 @@
       }
       throw new Error(`Unsupported APK compression method: ${method}.`);
     }
-    throw new Error('AndroidManifest.xml was not found in the APK.');
+    throw new Error(`${entryName} was not found in the APK.`);
   }
 
   function parseStringPool(bytes, offset) {
@@ -67,41 +67,99 @@
     if (rootHeaderSize < 8 || rootSize < rootHeaderSize || rootSize > bytes.length) throw new Error('Invalid AndroidManifest.xml root chunk size.');
     const pool = parseStringPool(bytes, rootHeaderSize);
     const strings = pool.strings;
-    let p = pool.next, packageName = '', versionName = '', versionCode = '';
+    let p = pool.next, packageName = '', versionName = '', versionCode = '', label = '', labelResourceId = 0;
     while (p + 8 <= bytes.length) {
       const type = U16(bytes, p), headerSize = U16(bytes, p + 2), size = U32(bytes, p + 4);
       if (headerSize < 8 || size < headerSize || p + size > bytes.length) break;
       if (type === 0x0102 && headerSize >= 16) {
         const nameIndex = U32(bytes, p + 20), elementName = strings[nameIndex] || '';
-        if (elementName === 'manifest') {
-          // ResXMLTree_attrExt follows the 16-byte ResXMLTree_node header.
-          // attributeStart is relative to the start of ResXMLTree_attrExt.
-          const attrStart = U16(bytes, p + 24), attrSize = U16(bytes, p + 26), attrCount = U16(bytes, p + 28);
-          if (attrSize < 20) throw new Error('Invalid AndroidManifest.xml: invalid attribute size.');
-          const attrs = p + 16 + attrStart;
-          for (let i = 0; i < attrCount; i++) {
-            const a = attrs + i * attrSize;
-            if (a + 20 > p + size) break;
-            const attrName = strings[U32(bytes, a + 4)] || '';
-            const rawIndex = U32(bytes, a + 8), dataType = bytes[a + 15], data = U32(bytes, a + 16);
-            const value = rawIndex !== 0xffffffff ? (strings[rawIndex] || '') : (dataType === 0x03 ? (strings[data] || '') : String(data >>> 0));
+        const attrStart = U16(bytes, p + 24), attrSize = U16(bytes, p + 26), attrCount = U16(bytes, p + 28);
+        if (attrSize < 20) throw new Error('Invalid AndroidManifest.xml: invalid attribute size.');
+        const attrs = p + 16 + attrStart;
+        for (let i = 0; i < attrCount; i++) {
+          const a = attrs + i * attrSize;
+          if (a + 20 > p + size) break;
+          const attrName = strings[U32(bytes, a + 4)] || '';
+          const rawIndex = U32(bytes, a + 8), dataType = bytes[a + 15], data = U32(bytes, a + 16);
+          const value = rawIndex !== 0xffffffff ? (strings[rawIndex] || '') : (dataType === 0x03 ? (strings[data] || '') : String(data >>> 0));
+          if (elementName === 'manifest') {
             if (attrName === 'package') packageName = value;
             else if (attrName === 'versionName') versionName = value;
             else if (attrName === 'versionCode') versionCode = value;
+          } else if (elementName === 'application' && attrName === 'label') {
+            if (dataType === 0x01) labelResourceId = data;
+            else if (dataType === 0x03) label = value;
           }
-          if (packageName) break;
         }
+        if (elementName === 'manifest' && packageName) { /* continue to application element */ }
       }
       p += size;
     }
     if (!packageName) throw new Error('Package name could not be read from AndroidManifest.xml.');
-    return { packageName, versionName, versionCode };
+    return { packageName, versionName, versionCode, label, labelResourceId };
+  }
+
+  function parseTableStringPool(bytes) {
+    if (bytes.length < 28 || U16(bytes, 0) !== 0x0002) return null;
+    return parseStringPool(bytes, U16(bytes, 2));
+  }
+
+  function resolveResourceString(bytes, resourceId) {
+    if (!resourceId || bytes.length < 12 || U16(bytes, 0) !== 0x0002) return '';
+    const tableHeader = U16(bytes, 2), tableSize = U32(bytes, 4);
+    if (tableSize > bytes.length) return '';
+    const tablePool = parseTableStringPool(bytes);
+    if (!tablePool) return '';
+    let p = tablePool.next, packageId = (resourceId >>> 24) & 0xff, targetType = (resourceId >>> 16) & 0xff, targetEntry = resourceId & 0xffff;
+    while (p + 8 <= bytes.length) {
+      const type = U16(bytes, p), headerSize = U16(bytes, p + 2), size = U32(bytes, p + 4);
+      if (size < headerSize || p + size > bytes.length || headerSize < 8) break;
+      if (type === 0x0200 && headerSize >= 284) {
+        const id = U32(bytes, p + 8) & 0xff;
+        if (id === packageId) {
+          const packageEnd = p + size;
+          let q = p + headerSize;
+          while (q + 8 <= packageEnd) {
+            const childType = U16(bytes, q), childHeader = U16(bytes, q + 2), childSize = U32(bytes, q + 4);
+            if (childSize < childHeader || q + childSize > packageEnd || childHeader < 8) break;
+            if (childType === 0x0201 && childHeader >= 24) {
+              const typeId = bytes[q + 8];
+              const entryCount = U32(bytes, q + 12), entriesStart = U32(bytes, q + 16);
+              if (typeId === targetType && targetEntry < entryCount) {
+                const offsetsBase = q + childHeader;
+                if (offsetsBase + entryCount * 4 <= q + childSize) {
+                  const entryOffset = U32(bytes, offsetsBase + targetEntry * 4);
+                  if (entryOffset !== 0xffffffff && entryOffset + 8 <= childSize - entriesStart) {
+                    const entryPos = q + entriesStart + entryOffset;
+                    const entrySize = U16(bytes, entryPos), entryFlags = U16(bytes, entryPos + 2);
+                    if (entryFlags & 0x0001) return '';
+                    const valuePos = entryPos + entrySize;
+                    if (valuePos + 8 <= q + childSize && U16(bytes, valuePos) >= 8 && bytes[valuePos + 3] === 0x03) {
+                      const stringIndex = U32(bytes, valuePos + 4);
+                      return tablePool.strings[stringIndex] || '';
+                    }
+                  }
+                }
+              }
+            }
+            q += childSize;
+          }
+        }
+      }
+      p += size;
+    }
+    return '';
   }
 
   window.readApkMetadata = async function(file) {
     if (!(file instanceof File)) throw new Error('Please select an APK file.');
     if (!/\.apk$/i.test(file.name)) throw new Error('Selected file must have an .apk extension.');
     const manifest = await readZipEntry(file, 'AndroidManifest.xml');
-    return { ...parseManifest(manifest), fileName: file.name, zipFileName: file.name.replace(/\.apk$/i, '.zip') };
+    const metadata = parseManifest(manifest);
+    let title = metadata.label;
+    if (!title && metadata.labelResourceId) {
+      try { const resources = await readZipEntry(file, 'resources.arsc'); title = resolveResourceString(resources, metadata.labelResourceId); } catch { /* Some APKs do not contain resources.arsc. */ }
+    }
+    return { ...metadata, title, fileName: file.name, zipFileName: file.name.replace(/\.apk$/i, '.zip') };
   };
 })();
