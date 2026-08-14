@@ -11,10 +11,9 @@
     el.classList.remove('hidden');
   };
 
-  async function chooseApk() {
+  function chooseApk() {
     const input = $('apkFileInput');
-    if (!input) return;
-    input.click();
+    if (input) input.click();
   }
 
   async function onApkSelected(file) {
@@ -39,6 +38,7 @@
     const index = Number($('editIndex')?.value ?? -1);
     originalApkFile = index >= 0 ? state.appsConfig[index]?.sourceApkFile || null : null;
     selectedApkFile = null;
+    $('apkFileInput').value = '';
     const status = $('apkFileStatus');
     if (status) status.classList.add('hidden');
   }
@@ -46,7 +46,6 @@
   function attachOpenHook() {
     const addButton = $('addAppBtn');
     if (addButton) addButton.addEventListener('click', captureBeforeOpen, true);
-    document.querySelectorAll('[data-action="edit"]').forEach(() => {});
   }
 
   function attachAppListHook() {
@@ -72,11 +71,15 @@
     const save = $('saveAppBtn');
     if (!save) return;
     save.addEventListener('click', () => {
+      const beforeIndex = Number($('editIndex')?.value ?? -1);
+      const isEdit = beforeIndex >= 0;
       setTimeout(() => {
-        const index = Number($('editIndex')?.value ?? -1);
-        if (index < 0 || !state.appsConfig[index]) return;
-        if (selectedApkFile) state.appsConfig[index].sourceApkFile = selectedApkFile;
-        else if (originalApkFile) state.appsConfig[index].sourceApkFile = originalApkFile;
+        let index = beforeIndex;
+        if (!isEdit) index = state.appsConfig.length - 1;
+        if (index >= 0 && state.appsConfig[index]) {
+          if (selectedApkFile) state.appsConfig[index].sourceApkFile = selectedApkFile;
+          else if (originalApkFile) state.appsConfig[index].sourceApkFile = originalApkFile;
+        }
         selectedApkFile = null;
         originalApkFile = null;
       }, 0);
