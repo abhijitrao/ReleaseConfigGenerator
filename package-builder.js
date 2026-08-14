@@ -82,41 +82,79 @@
     return (state.appsConfig || []).map((app, index) => ({ app, index, file: app.sourceApkFile || null })).filter(x => x.app && x.app.packageName);
   }
 
+  function getZipName(app, file) {
+    return (app.appName || file.name.replace(/\.apk$/i, '.zip')).replace(/\.apk$/i, '.zip');
+  }
+
+  function renderList(apps) {
+    $('packageBuilderSummary').innerHTML = `<b>${apps.length}</b> application(s) configured · <b>${apps.filter(x => x.file).length}</b> APK file(s) ready`;
+    $('packageBuilderList').innerHTML = apps.length ? apps.map(({ app, file }) => {
+      const zipName = file ? getZipName(app, file) : (app.appName || 'Application.zip');
+      const path = `${app.packageName}/${zipName}`;
+      return `<div class="package-builder-row"><div><b>${esc(app.title || app.appName)}</b><div>${esc(path)}</div></div><span class="package-file-status ${file ? 'ready' : 'missing'}">${file ? `✓ ${esc(file.name)}` : '⚠ APK not selected'}</span></div>`;
+    }).join('') : '<div class="empty">No applications added yet.</div>';
+  }
+
   function open() {
     ensureModal();
     const apps = getApplications();
-    const missing = apps.filter(x => !x.file);
-    $('packageBuilderSummary').innerHTML = `<b>${apps.length}</b> application(s) configured · <b>${missing.length}</b> APK file(s) missing`;
-    $('packageBuilderList').innerHTML = apps.length ? apps.map(({ app, file }) => `<div class="package-builder-row"><div><b>${esc(app.title || app.appName)}</b><div>${esc(app.packageName)} · v${esc(app.appVersion)}</div></div><span class="package-file-status ${file ? 'ready' : 'missing'}">${file ? `✓ ${esc(file.name)}` : '⚠ APK not selected'}</span></div>`).join('') : '<div class="empty">No applications added yet.</div>';
+    renderList(apps);
     $('packageBuilderError').classList.add('hidden');
     modal.classList.remove('hidden');
+  }
+
+  async function validateApplication(app, file) {
+    if (typeof window.readApkMetadata !== 'function') return null;
+    const metadata = await window.readApkMetadata(file);
+    const expectedZip = getZipName(app, file);
+    const errors = [];
+    if (metadata.packageName !== app.packageName) errors.push(`Package mismatch: config has "${app.packageName}" but APK contains "${metadata.packageName}".`);
+    if (metadata.versionName && app.appVersion && metadata.versionName !== app.appVersion) errors.push(`Version mismatch for ${app.packageName}: config has "${app.appVersion}" but APK contains "${metadata.versionName}".`);
+    if (!/^.+\.zip$/i.test(expectedZip)) errors.push(`App Name (FileName) must end with .zip for ${app.packageName}.`);
+    return errors;
   }
 
   async function buildPackage() {
     const apps = getApplications();
     const missing = apps.filter(x => !x.file);
     const error = $('packageBuilderError');
+    error.classList.add('hidden');
     if (!apps.length) { error.textContent = 'Add at least one application before building the package.'; error.classList.remove('hidden'); return; }
     if (missing.length) { error.textContent = `APK file is missing for: ${missing.map(x => x.app.title || x.app.appName || x.app.packageName).join(', ')}.`; error.classList.remove('hidden'); return; }
 
     const button = $('buildPackageBtn');
     button.disabled = true;
-    button.textContent = 'Building…';
+    button.textContent = 'Validating…';
     try {
+      const validationErrors = [];
+      for (const { app, file } of apps) {
+        const errors = await validateApplication(app, file);
+        validationErrors.push(...errors);
+      }
+      if (validationErrors.length) {
+        error.innerHTML = `<b>Package validation failed:</b><ul>${validationErrors.map(esc).map(x => `<li>${x}</li>`).join('')}</ul>`;
+        error.classList.remove('hidden');
+        return;
+      }
+
+      button.textContent = 'Building…';
       const entries = [];
       for (const { app, file } of apps) {
         const bytes = new Uint8Array(await file.arrayBuffer());
-        const zipName = (app.appName || file.name.replace(/\.apk$/i, '.zip')).replace(/\.apk$/i, '.zip');
+        const zipName = getZipName(app, file);
         entries.push({ name: `${app.packageName}/${zipName}`, data: bytes });
       }
       const config = JSON.stringify(buildOutput(), null, 4);
       entries.push({ name: 'config.json', data: new TextEncoder().encode(config) });
+
       const blob = makeZip(entries);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `AppStore_Package_${new Date().toISOString().slice(0,10)}.zip`;
-      document.body.appendChild(a); a.click(); a.remove();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       close();
       if (typeof toast === 'function') toast('AppStore package downloaded');
