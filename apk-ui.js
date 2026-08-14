@@ -86,6 +86,14 @@
     });
   }
 
+  function loadPackageBuilder() {
+    if (document.querySelector('script[data-phase2-package-builder]')) return;
+    const script = document.createElement('script');
+    script.src = `package-builder.js?v=${Date.now()}`;
+    script.dataset.phase2PackageBuilder = 'true';
+    document.body.appendChild(script);
+  }
+
   function init() {
     const choose = $('chooseApkBtn');
     const input = $('apkFileInput');
@@ -95,6 +103,7 @@
     attachOpenHook();
     attachAppListHook();
     attachSaveHook();
+    loadPackageBuilder();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
