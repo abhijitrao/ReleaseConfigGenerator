@@ -76,30 +76,20 @@
   }
 
   function normalizeRoot(entries) {
-    // config.json may be directly at root OR buried under any number of wrapper folders,
-    // e.g. X990/config.json, X990/backup/config.json, X990/backup/2026/config.json.
-    // Keep stripping the common parent folder until config.json is at the logical root.
     let normalized = entries.map(entry => ({ ...entry, name: normalizeZipPath(entry.name) }));
-
     for (let depth = 0; depth < 50; depth++) {
       const configEntry = normalized.find(e => !e.directory && e.name.toLowerCase() === 'config.json');
       if (configEntry) return normalized;
-
       const nestedConfig = normalized.find(e => !e.directory && /(^|\/)config\.json$/i.test(e.name));
       if (!nestedConfig) throw new Error('config.json was not found in the AppStore package.');
-
       const slashIndex = nestedConfig.name.indexOf('/');
       if (slashIndex < 0) return normalized;
       const wrapper = nestedConfig.name.slice(0, slashIndex);
       const prefix = `${wrapper}/`;
-      const hasRootEntry = normalized.some(e => e.name === wrapper || e.name.startsWith(prefix));
-      if (!hasRootEntry) throw new Error('Invalid AppStore package folder structure.');
-
       normalized = normalized
         .filter(entry => entry.name === wrapper || entry.name.startsWith(prefix))
         .map(entry => ({ ...entry, name: entry.name === wrapper ? '' : entry.name.slice(prefix.length) }));
     }
-
     throw new Error('AppStore package folder nesting is too deep.');
   }
 
@@ -115,7 +105,6 @@
     const entries = normalizeRoot(await readZip(file));
     const configEntry = findEntry(entries, 'config.json');
     if (!configEntry) throw new Error('config.json was not found in the AppStore package.');
-
     let data;
     try { data = JSON.parse(textDecoder.decode(configEntry.data)); }
     catch { throw new Error('Invalid config.json in the AppStore package.'); }
@@ -135,13 +124,12 @@
 
     resetPackageFiles();
     const configFiles = window.phase2ConfigFiles || { image: new Map(), pfx: new Map(), banner: new Map() };
-
     state.appsConfig.forEach(app => {
       const entry = findEntry(entries, `${app.packageName}/${app.appName}`);
       app.sourceApkFile = entry ? new File([entry.data], app.appName, { type: 'application/zip' }) : null;
     });
     (state.imageConfig.config || []).forEach((item, index) => {
-      const entry = findEntry(entries, `imageConfig/${item.imageFileName}`);
+      const entry = findEntry(entries, `PrinterConfig/${item.imageFileName}`);
       if (entry) configFiles.image.set(String(index), new File([entry.data], item.imageFileName));
     });
     if (state.pfxConfig?.pfxFileName) {
