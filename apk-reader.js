@@ -137,8 +137,6 @@
     const rootSize = U32(bytes, 4);
     if (rootHeaderSize < 8 || rootSize < rootHeaderSize || rootSize > bytes.length) throw new Error('Invalid AndroidManifest.xml root chunk size.');
 
-    // RES_XML_TYPE has an 8-byte header; its size is the total XML size.
-    // The first child chunk (String Pool) starts at the root header size.
     let p = rootHeaderSize;
     const pool = parseStringPool(bytes, p);
     const strings = pool.strings;
@@ -159,7 +157,10 @@
         continue;
       }
 
-      if (type === 0x0102 && headerSize >= 36) {
+      // RES_XML_START_ELEMENT_TYPE has a 16-byte chunk header.
+      // The extension after that header contains the namespace/name and
+      // attribute metadata, so the total fixed start-element prefix is 36 bytes.
+      if (type === 0x0102 && headerSize >= 16 && size >= 36) {
         const nameIndex = U32(bytes, p + 20);
         const attrStart = U16(bytes, p + 24);
         const attrSize = U16(bytes, p + 26);
@@ -168,9 +169,12 @@
 
         if (elementName === 'manifest' && attrSize >= 20) {
           const attrs = p + attrStart;
+          if (attrs < p + headerSize || attrs + attrCount * attrSize > p + size) {
+            p += size;
+            continue;
+          }
           for (let i = 0; i < attrCount; i++) {
             const a = attrs + i * attrSize;
-            if (a + 20 > p + size) break;
             const attrName = strings[U32(bytes, a + 4)] || '';
             const rawIndex = U32(bytes, a + 8);
             const dataType = bytes[a + 15];
