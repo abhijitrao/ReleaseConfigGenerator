@@ -11,6 +11,10 @@
     el.classList.remove('hidden');
   };
 
+  function findRevisionInput() {
+    return $('revisionId') || $('revisionID') || $('appRevisionId') || document.querySelector('input[name="revisionId"], input[name="revisionID"], input[name="revision_id"], input[data-field="revisionId"], input[data-config-field="revisionId"]');
+  }
+
   function chooseApk() {
     const input = $('apkFileInput');
     if (input) input.click();
@@ -27,7 +31,9 @@
       $('appName').value = metadata.zipFileName;
       $('packageName').value = metadata.packageName;
       $('appVersion').value = metadata.versionName || metadata.versionCode || '';
-      showStatus(`✓ ${metadata.fileName} · ${metadata.packageName} · v${metadata.versionName || metadata.versionCode || 'unknown'}`, 'success');
+      const revisionInput = findRevisionInput();
+      if (revisionInput) revisionInput.value = metadata.revisionId || '';
+      showStatus(`✓ ${metadata.fileName} · ${metadata.packageName} · v${metadata.versionName || metadata.versionCode || 'unknown'}${metadata.revisionId ? ` · Revision ${metadata.revisionId}` : ''}`, 'success');
     } catch (error) {
       selectedApkFile = null;
       $('apkFileInput').value = '';
