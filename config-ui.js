@@ -38,7 +38,15 @@
   }
   function renderSupport() {
     const list=$('supportConfigList'), s=state.supportConfig;
-    const hasData=!!(s.timeStamp||s.helpLine||s.preAuth.dateExceededMessage||s.preAuth.amountLimitMessage||s.preAuth.completionReminderMessage);
+    // A timestamp is metadata only. Support configuration should appear only when
+    // the user has entered actual support content; timestamp-manager may initialize
+    // a fresh configuration to "0" and that must not create a visible support item.
+    const hasData=!!(
+      s.helpLine ||
+      s.preAuth.dateExceededMessage ||
+      s.preAuth.amountLimitMessage ||
+      s.preAuth.completionReminderMessage
+    );
     if(!hasData){list.innerHTML='<div class="empty">No support configuration added yet.</div>';$('addSupportBtn').textContent='+ Add Support';return;}
     const messages=[['Date Exceeded',s.preAuth.dateExceededMessage],['Amount Limit',s.preAuth.amountLimitMessage],['Completion Reminder',s.preAuth.completionReminderMessage]], count=messages.filter(([,v])=>v).length;
     const details=messages.filter(([,v])=>v).map(([label,value])=>`<div class="support-message"><span class="config-preview-label">${esc(label)}</span><span>${esc(value)}</span></div>`).join('');
