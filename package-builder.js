@@ -3,7 +3,8 @@
   let buildButton;
   const selectedFiles = { image: new Map(), pfx: new Map(), banner: new Map(), apk: new Map() };
   const $ = id => document.getElementById(id);
-  const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[c]));
+  const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[c]));
+  function configFiles(type) { return window.phase2ConfigFiles?.[type] || selectedFiles[type]; }
   function crc32(bytes) { let crc = 0xffffffff; for (let i = 0; i < bytes.length; i++) { crc ^= bytes[i]; for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1)); } return (crc ^ 0xffffffff) >>> 0; }
   function u16(value) { return [value & 255, (value >>> 8) & 255]; }
   function u32(value) { return [value & 255, (value >>> 0) >> 8 & 255, (value >>> 16) & 255, (value >>> 24) & 255]; }
@@ -26,13 +27,13 @@
   }
   function renderFileRows() {
     const { image, banners, pfx } = getConfigFiles(), sections=[];
-    const row=(type,key,label,folder)=>{const file=selectedFiles[type].get(key);return `<div class="package-config-file-row"><div class="package-config-file-main"><b>${esc(label)}</b><span>${esc(folder)}/</span></div><span class="package-file-status ${file?'ready':'missing'}">${file?`✓ ${esc(file.name || 'File selected')}`:'File not selected'}</span></div>`;};
+    const row=(type,key,label,folder)=>{const file=configFiles(type).get(key);return `<div class="package-config-file-row"><div class="package-config-file-main"><b>${esc(label)}</b><span>${esc(folder)}/</span></div><span class="package-file-status ${file?'ready':'missing'}">${file?`✓ ${esc(file.name || 'File selected')}`:'File not selected'}</span></div>`;};
     if(image.length)sections.push(`<div class="package-config-section"><h3>Image Configuration Files</h3>${image.map((item,i)=>row('image',String(i),item.imageFileName||`Image ${i+1}`,'imageConfig')).join('')}</div>`);
     if(pfx.length)sections.push(`<div class="package-config-section"><h3>PFX Configuration File</h3>${row('pfx','0',pfx[0].pfxFileName,'pfxConfig')}</div>`);
     if(banners.length)sections.push(`<div class="package-config-section"><h3>Banner Configuration Files</h3>${banners.map((item,i)=>row('banner',String(i),item.bannerName||`Banner ${i+1}`,'bannerConfig')).join('')}</div>`);
     $('packageBuilderFiles').innerHTML=sections.length?sections.join(''):'<div class="package-builder-no-files">No additional configuration files are configured.</div>';
   }
-  function renderBuilder(){const apps=getApplications(),missing=apps.filter(x=>!x.file);$('packageBuilderSummary').innerHTML=`<b>${apps.length}</b> application(s) configured · <b>${missing.length}</b> APK file(s) available`;renderApplicationRows();renderFileRows();}
+  function renderBuilder(){const apps=getApplications(),missing=apps.filter(x=>!x.file);$('packageBuilderSummary').innerHTML=`<b>${apps.length}</b> application(s) configured · <b>${apps.length-missing.length}</b> APK file(s) selected`;renderApplicationRows();renderFileRows();}
   function showError(message){const error=$('packageBuilderError');error.textContent=message;error.classList.remove('hidden');}
   function open(){ensureModal();$('packageBuilderError').classList.add('hidden');renderBuilder();modal.classList.remove('hidden');}
   function addEmptyFolder(entries,folder){entries.push({name:`${folder}/`,data:new Uint8Array(0),directory:true});}
@@ -43,9 +44,9 @@
       const entries=[];
       for(const {app,file} of apps){if(file){const bytes=new Uint8Array(await file.arrayBuffer());const zipName=(app.appName||file.name.replace(/\.apk$/i,'.zip')).replace(/\.apk$/i,'.zip');entries.push({name:`${app.packageName}/${zipName}`,data:bytes});}else{addEmptyFolder(entries,app.packageName);}}
       const {image,banners,pfx}=getConfigFiles();
-      for(let i=0;i<image.length;i++){const file=selectedFiles.image.get(String(i));if(file)entries.push({name:`imageConfig/${image[i].imageFileName}`,data:new Uint8Array(await file.arrayBuffer())});}
-      if(pfx.length){const file=selectedFiles.pfx.get('0');if(file)entries.push({name:`pfxConfig/${pfx[0].pfxFileName}`,data:new Uint8Array(await file.arrayBuffer())});}
-      for(let i=0;i<banners.length;i++){const file=selectedFiles.banner.get(String(i));if(file)entries.push({name:`bannerConfig/${banners[i].bannerName}`,data:new Uint8Array(await file.arrayBuffer())});}
+      for(let i=0;i<image.length;i++){const file=configFiles('image').get(String(i));if(file)entries.push({name:`imageConfig/${image[i].imageFileName}`,data:new Uint8Array(await file.arrayBuffer())});}
+      if(pfx.length){const file=configFiles('pfx').get('0');if(file)entries.push({name:`pfxConfig/${pfx[0].pfxFileName}`,data:new Uint8Array(await file.arrayBuffer())});}
+      for(let i=0;i<banners.length;i++){const file=configFiles('banner').get(String(i));if(file)entries.push({name:`bannerConfig/${banners[i].bannerName}`,data:new Uint8Array(await file.arrayBuffer())});}
       if(image.length)addEmptyFolder(entries,'imageConfig');if(pfx.length)addEmptyFolder(entries,'pfxConfig');if(banners.length)addEmptyFolder(entries,'bannerConfig');
       entries.push({name:'config.json',data:new TextEncoder().encode(JSON.stringify(buildOutput(),null,4))});
       const blob=makeZip(entries),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`AppStore_Package_${new Date().toISOString().slice(0,10)}.zip`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);close();if(typeof toast==='function')toast('AppStore package downloaded');
