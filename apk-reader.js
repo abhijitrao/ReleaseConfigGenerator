@@ -71,11 +71,11 @@
     while (p + 8 <= bytes.length) {
       const type = U16(bytes, p), headerSize = U16(bytes, p + 2), size = U32(bytes, p + 4);
       if (headerSize < 8 || size < headerSize || p + size > bytes.length) break;
-      if (type === 0x0102 && headerSize >= 36) {
+      if (type === 0x0102 && headerSize >= 16) {
         const nameIndex = U32(bytes, p + 20), elementName = strings[nameIndex] || '';
         if (elementName === 'manifest') {
-          // ResXMLTree_attrExt begins after the 16-byte ResXMLTree_node.
-          // attributeStart is relative to attrExt, not to the chunk itself.
+          // ResXMLTree_attrExt follows the 16-byte ResXMLTree_node header.
+          // attributeStart is relative to the start of ResXMLTree_attrExt.
           const attrStart = U16(bytes, p + 24), attrSize = U16(bytes, p + 26), attrCount = U16(bytes, p + 28);
           if (attrSize < 20) throw new Error('Invalid AndroidManifest.xml: invalid attribute size.');
           const attrs = p + 16 + attrStart;
