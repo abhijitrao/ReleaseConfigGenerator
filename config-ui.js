@@ -38,6 +38,12 @@
   }
   function renderSupport() {
     const list=$('supportConfigList'), s=state.supportConfig;
+    // A support configuration with timestamp 0 is considered uninitialized and must not appear in the list.
+    if (String(s.timeStamp ?? '').trim() === '0') {
+      list.innerHTML='<div class="empty">No support configuration added yet.</div>';
+      $('addSupportBtn').textContent='+ Add Support';
+      return;
+    }
     const hasData=!!(
       String(s.helpLine || '').trim() ||
       String(s.preAuth?.dateExceededMessage || '').trim() ||
