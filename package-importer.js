@@ -101,57 +101,138 @@
 
   function findEntry(entries, path) { return entries.find(entry => entry.name === path && !entry.directory); }
 
-  async function importPackage(file) {
-    const entries = normalizeRoot(await readZip(file));
-    const configEntry = findEntry(entries, 'config.json');
-    if (!configEntry) throw new Error('config.json was not found in the AppStore package.');
-    let data;
-    try { data = JSON.parse(textDecoder.decode(configEntry.data)); }
-    catch { throw new Error('Invalid config.json in the AppStore package.'); }
-    if (!Array.isArray(data.appsConfig)) throw new Error('Invalid AppStore package: appsConfig is missing.');
+  function jsonErrorDetails(error, jsonText) {
+    const message = error?.message || 'Unknown JSON parsing error.';
+    const match = message.match(/position\s+(\d+)/i);
+    if (!match) return message;
+    const position = Number(match[1]);
+    const before = jsonText.slice(0, position);
+    const line = before.split(/\r?\n/).length;
+    const lastNewLine = Math.max(before.lastIndexOf('\n'), before.lastIndexOf('\r'));
+    const column = position - lastNewLine;
+    const start = Math.max(0, position - 45);
+    const end = Math.min(jsonText.length, position + 45);
+    const snippet = jsonText.slice(start, end).replace(/\r?\n/g, ' ');
+    return `${message}\nLine: ${line}, Column: ${column}\nNear: ${snippet}`;
+  }
 
-    $('runBackground').checked = !!data.isRunOnBackground;
-    $('confirmation').checked = !!data.isConfirmationRequired;
-    $('showError').checked = !!data.isShowErrorMsg;
-    $('wifiOnly').checked = !!data.isDownloadOverWifiOnly;
-    state.appsConfig = data.appsConfig.map(typeof normalizeApp === 'function' ? normalizeApp : app => app);
-    state.whiteListPackageName = data.whiteListPackageName || '';
-    state.imageConfig = data.imageConfig || { config: [], timeStamp: '' };
-    state.pfxConfig = data.pfxConfig || { pfxFileName: '', timeStamp: '' };
-    state.bannerConfig = Array.isArray(data.bannerConfig) ? data.bannerConfig : [];
-    state.supportConfig = data.supportConfig || state.supportConfig;
-    if (typeof enforceDependencyAutoInstall === 'function') enforceDependencyAutoInstall();
-
-    resetPackageFiles();
-    const configFiles = window.phase2ConfigFiles || { image: new Map(), pfx: new Map(), banner: new Map() };
-    state.appsConfig.forEach(app => {
-      const entry = findEntry(entries, `${app.packageName}/${app.appName}`);
-      app.sourceApkFile = entry ? new File([entry.data], app.appName, { type: 'application/zip' }) : null;
-    });
-    (state.imageConfig.config || []).forEach((item, index) => {
-      const entry = findEntry(entries, `PrinterConfig/${item.imageFileName}`);
-      if (entry) configFiles.image.set(String(index), new File([entry.data], item.imageFileName));
-    });
-    if (state.pfxConfig?.pfxFileName) {
-      const entry = findEntry(entries, `pfxConfig/${state.pfxConfig.pfxFileName}`);
-      if (entry) configFiles.pfx.set('0', new File([entry.data], state.pfxConfig.pfxFileName));
+  function showImportError(title, message, details = '') {
+    let modal = $('importPackageErrorModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'importPackageErrorModal';
+      modal.className = 'modal hidden';
+      modal.innerHTML = `<div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="importPackageErrorTitle"><div class="modal-header"><div><h2 id="importPackageErrorTitle">Package Import Failed</h2><p>Review the error details and select a valid AppStore package.</p></div><button type="button" class="icon-btn" id="closeImportPackageError" aria-label="Close">×</button></div><div class="modal-body"><div class="form-error" id="importPackageErrorMessage"></div><pre id="importPackageErrorDetails" class="import-error-details hidden"></pre></div><div class="modal-footer"><button type="button" id="okImportPackageError" class="primary">OK</button></div></div>`;
+      document.body.appendChild(modal);
+      const close = () => modal.classList.add('hidden');
+      $('closeImportPackageError').addEventListener('click', close);
+      $('okImportPackageError').addEventListener('click', close);
     }
-    (state.bannerConfig || []).forEach((item, index) => {
-      const entry = findEntry(entries, `bannerConfig/${item.bannerName}`);
-      if (entry) configFiles.banner.set(String(index), new File([entry.data], item.bannerName));
+    modal.querySelector('h2').textContent = title || 'Package Import Failed';
+    $('importPackageErrorMessage').textContent = message || 'Unable to import the selected package.';
+    const detailsElement = $('importPackageErrorDetails');
+    detailsElement.textContent = details || '';
+    detailsElement.classList.toggle('hidden', !details);
+    modal.classList.remove('hidden');
+  }
+
+  function validateConfigData(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('config.json must contain a JSON object.');
+    }
+    if (!Array.isArray(data.appsConfig)) {
+      throw new Error('Required field "appsConfig" is missing or is not an array.');
+    }
+    data.appsConfig.forEach((app, index) => {
+      if (!app || typeof app !== 'object' || Array.isArray(app)) {
+        throw new Error(`appsConfig[${index}] must be an object.`);
+      }
+      if (!String(app.packageName || '').trim()) throw new Error(`appsConfig[${index}].packageName is missing.`);
+      if (!String(app.appName || '').trim()) throw new Error(`appsConfig[${index}].appName is missing.`);
     });
+    if (data.imageConfig != null && typeof data.imageConfig !== 'object') throw new Error('imageConfig must be an object.');
+    if (data.pfxConfig != null && typeof data.pfxConfig !== 'object') throw new Error('pfxConfig must be an object.');
+    if (data.bannerConfig != null && !Array.isArray(data.bannerConfig)) throw new Error('bannerConfig must be an array.');
+    if (data.supportConfig != null && typeof data.supportConfig !== 'object') throw new Error('supportConfig must be an object.');
+  }
 
-    window.phase2PackageFiles = window.phase2PackageFiles || { image: new Map(), pfx: new Map(), banner: new Map(), apk: new Map() };
-    configFiles.image.forEach((value, key) => window.phase2PackageFiles.image.set(key, value));
-    configFiles.pfx.forEach((value, key) => window.phase2PackageFiles.pfx.set(key, value));
-    configFiles.banner.forEach((value, key) => window.phase2PackageFiles.banner.set(key, value));
-    state.appsConfig.forEach((app, index) => { if (app.sourceApkFile) window.phase2PackageFiles.apk.set(String(index), app.sourceApkFile); });
+  async function importPackage(file) {
+    let entries;
+    try {
+      entries = normalizeRoot(await readZip(file));
+    } catch (error) {
+      showImportError('Invalid AppStore Package', error.message || 'Unable to read the ZIP package.');
+      return;
+    }
 
-    window.phase2PackageFileName = file.name;
-    renderApps();
-    refreshPreview();
-    if (typeof window.refreshPreview === 'function') window.refreshPreview();
-    toast(`Imported package: ${state.appsConfig.length} application(s)`);
+    const configEntry = findEntry(entries, 'config.json');
+    if (!configEntry) {
+      showImportError('config.json Not Found', 'The selected AppStore package does not contain a config.json file.', 'Expected config.json at the package root or inside nested folders.');
+      return;
+    }
+
+    const jsonText = textDecoder.decode(configEntry.data);
+    let data;
+    try {
+      data = JSON.parse(jsonText);
+    } catch (error) {
+      showImportError('Invalid config.json', 'The config.json file contains invalid JSON.', jsonErrorDetails(error, jsonText));
+      return;
+    }
+
+    try {
+      validateConfigData(data);
+    } catch (error) {
+      showImportError('Invalid config.json', 'The config.json structure is invalid.', error.message || 'Unknown configuration error.');
+      return;
+    }
+
+    try {
+      $('runBackground').checked = !!data.isRunOnBackground;
+      $('confirmation').checked = !!data.isConfirmationRequired;
+      $('showError').checked = !!data.isShowErrorMsg;
+      $('wifiOnly').checked = !!data.isDownloadOverWifiOnly;
+      state.appsConfig = data.appsConfig.map(typeof normalizeApp === 'function' ? normalizeApp : app => app);
+      state.whiteListPackageName = data.whiteListPackageName || '';
+      state.imageConfig = data.imageConfig || { config: [], timeStamp: '' };
+      state.pfxConfig = data.pfxConfig || { pfxFileName: '', timeStamp: '' };
+      state.bannerConfig = Array.isArray(data.bannerConfig) ? data.bannerConfig : [];
+      state.supportConfig = data.supportConfig || state.supportConfig;
+      if (typeof enforceDependencyAutoInstall === 'function') enforceDependencyAutoInstall();
+
+      resetPackageFiles();
+      const configFiles = window.phase2ConfigFiles || { image: new Map(), pfx: new Map(), banner: new Map() };
+      state.appsConfig.forEach(app => {
+        const entry = findEntry(entries, `${app.packageName}/${app.appName}`);
+        app.sourceApkFile = entry ? new File([entry.data], app.appName, { type: 'application/zip' }) : null;
+      });
+      (state.imageConfig.config || []).forEach((item, index) => {
+        const entry = findEntry(entries, `PrinterConfig/${item.imageFileName}`);
+        if (entry) configFiles.image.set(String(index), new File([entry.data], item.imageFileName));
+      });
+      if (state.pfxConfig?.pfxFileName) {
+        const entry = findEntry(entries, `pfxConfig/${state.pfxConfig.pfxFileName}`);
+        if (entry) configFiles.pfx.set('0', new File([entry.data], state.pfxConfig.pfxFileName));
+      }
+      (state.bannerConfig || []).forEach((item, index) => {
+        const entry = findEntry(entries, `bannerConfig/${item.bannerName}`);
+        if (entry) configFiles.banner.set(String(index), new File([entry.data], item.bannerName));
+      });
+
+      window.phase2PackageFiles = window.phase2PackageFiles || { image: new Map(), pfx: new Map(), banner: new Map(), apk: new Map() };
+      configFiles.image.forEach((value, key) => window.phase2PackageFiles.image.set(key, value));
+      configFiles.pfx.forEach((value, key) => window.phase2PackageFiles.pfx.set(key, value));
+      configFiles.banner.forEach((value, key) => window.phase2PackageFiles.banner.set(key, value));
+      state.appsConfig.forEach((app, index) => { if (app.sourceApkFile) window.phase2PackageFiles.apk.set(String(index), app.sourceApkFile); });
+
+      window.phase2PackageFileName = file.name;
+      renderApps();
+      refreshPreview();
+      if (typeof window.refreshPreview === 'function') window.refreshPreview();
+      toast(`Imported package: ${state.appsConfig.length} application(s)`);
+    } catch (error) {
+      showImportError('Package Import Failed', 'The package was read, but its configuration could not be applied.', error.message || 'Unknown import error.');
+    }
   }
 
   function init() {
@@ -163,8 +244,7 @@
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file) return;
-      try { await importPackage(file); }
-      catch (error) { toast(error.message || 'Unable to import AppStore package.'); }
+      await importPackage(file);
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
