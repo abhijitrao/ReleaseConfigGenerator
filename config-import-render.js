@@ -45,7 +45,9 @@
     const messages=[['Date Exceeded',support.preAuth.dateExceededMessage],['Amount Limit',support.preAuth.amountLimitMessage],['Completion Reminder',support.preAuth.completionReminderMessage]];
     const messageCount=messages.filter(([,v])=>v).length;
     const details=messages.filter(([,v])=>v).map(([label,value])=>`<div class="support-message"><span class="config-preview-label">${esc(label)}</span><span>${esc(value)}</span></div>`).join('');
-    const hasSupport=!!(support.timeStamp||support.helpLine||messageCount);
+    // Timestamp 0 means the support configuration is not initialized yet.
+    const hasSupportTimestamp = String(support.timeStamp ?? '').trim() !== '0';
+    const hasSupport = hasSupportTimestamp && !!(support.timeStamp || support.helpLine || messageCount);
     supportList.innerHTML=hasSupport? shell('Support & Pre-Auth',`<span>Help Line: ${esc(support.helpLine || '-')}</span><span class="meta-separator">·</span><span>Time Stamp: ${esc(support.timeStamp || '-')}</span>`,[badge('Support','blue-soft'),support.helpLine?badge(`Help Line ${support.helpLine}`):'',badge(`${messageCount} Pre-Auth Message${messageCount===1?'':'s'}`)],'support',0,details?`<div class="config-preview-line support-preview"><span class="config-preview-label">Pre-Auth</span><div class="support-message-list">${details}</div></div>`:''):'<div class="empty">No support configuration added yet.</div>';
   }
 
