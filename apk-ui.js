@@ -23,6 +23,7 @@
     try {
       const metadata = await window.readApkMetadata(file);
       selectedApkFile = file;
+      if (metadata.title) $('title').value = metadata.title;
       $('appName').value = metadata.zipFileName;
       $('packageName').value = metadata.packageName;
       $('appVersion').value = metadata.versionName || metadata.versionCode || '';
