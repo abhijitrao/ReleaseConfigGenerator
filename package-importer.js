@@ -33,7 +33,6 @@
     let offset = centralOffset;
     for (let i = 0; i < entryCount; i++) {
       if (signature(bytes, offset) !== 0x02014b50) throw new Error('Invalid AppStore ZIP central directory.');
-      const flags = u16(bytes, offset + 8);
       const method = u16(bytes, offset + 10);
       const compressedSize = u32(bytes, offset + 20);
       const uncompressedSize = u32(bytes, offset + 24);
@@ -62,21 +61,46 @@
       else throw new Error(`Unsupported ZIP compression for: ${name}`);
 
       if (data.length !== uncompressedSize) throw new Error(`Invalid ZIP entry size for: ${name}`);
-      entries.push({ name, data, directory: name.endsWith('/') });
+      entries.push({ name: normalizeZipPath(name), data, directory: name.endsWith('/') });
     }
     return entries;
   }
 
+  function normalizeZipPath(path) {
+    return String(path || '')
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '')
+      .split('/')
+      .filter(part => part && part !== '.')
+      .join('/');
+  }
+
   function normalizeRoot(entries) {
-    const configEntry = entries.find(e => !e.directory && /(?:^|\/)config\.json$/i.test(e.name));
-    if (!configEntry) throw new Error('config.json was not found in the AppStore package.');
-    const marker = configEntry.name.toLowerCase().endsWith('/config.json') ? configEntry.name.slice(0, -'config.json'.length) : '';
-    if (!marker) return entries;
-    const root = marker.endsWith('/') ? marker.slice(0, -1) : marker;
-    return entries.map(entry => {
-      const prefix = `${root}/`;
-      return entry.name.startsWith(prefix) ? { ...entry, name: entry.name.slice(prefix.length) } : entry;
-    });
+    // config.json may be directly at root OR buried under any number of wrapper folders,
+    // e.g. X990/config.json, X990/backup/config.json, X990/backup/2026/config.json.
+    // Keep stripping the common parent folder until config.json is at the logical root.
+    let normalized = entries.map(entry => ({ ...entry, name: normalizeZipPath(entry.name) }));
+
+    for (let depth = 0; depth < 50; depth++) {
+      const configEntry = normalized.find(e => !e.directory && e.name.toLowerCase() === 'config.json');
+      if (configEntry) return normalized;
+
+      const nestedConfig = normalized.find(e => !e.directory && /(^|\/)config\.json$/i.test(e.name));
+      if (!nestedConfig) throw new Error('config.json was not found in the AppStore package.');
+
+      const slashIndex = nestedConfig.name.indexOf('/');
+      if (slashIndex < 0) return normalized;
+      const wrapper = nestedConfig.name.slice(0, slashIndex);
+      const prefix = `${wrapper}/`;
+      const hasRootEntry = normalized.some(e => e.name === wrapper || e.name.startsWith(prefix));
+      if (!hasRootEntry) throw new Error('Invalid AppStore package folder structure.');
+
+      normalized = normalized
+        .filter(entry => entry.name === wrapper || entry.name.startsWith(prefix))
+        .map(entry => ({ ...entry, name: entry.name === wrapper ? '' : entry.name.slice(prefix.length) }));
+    }
+
+    throw new Error('AppStore package folder nesting is too deep.');
   }
 
   function resetPackageFiles() {
