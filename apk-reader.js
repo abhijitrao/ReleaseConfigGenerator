@@ -91,7 +91,6 @@
             else if (dataType === 0x03) label = value;
           }
         }
-        if (elementName === 'manifest' && packageName) { /* continue to application element */ }
       }
       p += size;
     }
@@ -106,11 +105,12 @@
 
   function resolveResourceString(bytes, resourceId) {
     if (!resourceId || bytes.length < 12 || U16(bytes, 0) !== 0x0002) return '';
-    const tableHeader = U16(bytes, 2), tableSize = U32(bytes, 4);
+    const tableSize = U32(bytes, 4);
     if (tableSize > bytes.length) return '';
     const tablePool = parseTableStringPool(bytes);
     if (!tablePool) return '';
-    let p = tablePool.next, packageId = (resourceId >>> 24) & 0xff, targetType = (resourceId >>> 16) & 0xff, targetEntry = resourceId & 0xffff;
+    const packageId = (resourceId >>> 24) & 0xff, targetType = (resourceId >>> 16) & 0xff, targetEntry = resourceId & 0xffff;
+    let p = tablePool.next;
     while (p + 8 <= bytes.length) {
       const type = U16(bytes, p), headerSize = U16(bytes, p + 2), size = U32(bytes, p + 4);
       if (size < headerSize || p + size > bytes.length || headerSize < 8) break;
@@ -123,21 +123,16 @@
             const childType = U16(bytes, q), childHeader = U16(bytes, q + 2), childSize = U32(bytes, q + 4);
             if (childSize < childHeader || q + childSize > packageEnd || childHeader < 8) break;
             if (childType === 0x0201 && childHeader >= 24) {
-              const typeId = bytes[q + 8];
-              const entryCount = U32(bytes, q + 12), entriesStart = U32(bytes, q + 16);
+              const typeId = bytes[q + 8], entryCount = U32(bytes, q + 12), entriesStart = U32(bytes, q + 16);
               if (typeId === targetType && targetEntry < entryCount) {
                 const offsetsBase = q + childHeader;
                 if (offsetsBase + entryCount * 4 <= q + childSize) {
                   const entryOffset = U32(bytes, offsetsBase + targetEntry * 4);
                   if (entryOffset !== 0xffffffff && entryOffset + 8 <= childSize - entriesStart) {
-                    const entryPos = q + entriesStart + entryOffset;
-                    const entrySize = U16(bytes, entryPos), entryFlags = U16(bytes, entryPos + 2);
+                    const entryPos = q + entriesStart + entryOffset, entrySize = U16(bytes, entryPos), entryFlags = U16(bytes, entryPos + 2);
                     if (entryFlags & 0x0001) return '';
                     const valuePos = entryPos + entrySize;
-                    if (valuePos + 8 <= q + childSize && U16(bytes, valuePos) >= 8 && bytes[valuePos + 3] === 0x03) {
-                      const stringIndex = U32(bytes, valuePos + 4);
-                      return tablePool.strings[stringIndex] || '';
-                    }
+                    if (valuePos + 8 <= q + childSize && U16(bytes, valuePos) >= 8 && bytes[valuePos + 3] === 0x03) return tablePool.strings[U32(bytes, valuePos + 4)] || '';
                   }
                 }
               }
@@ -151,6 +146,14 @@
     return '';
   }
 
+  function extractRevisionId(fileName) {
+    const base = String(fileName || '').replace(/\.apk$/i, '').replace(/\.zip$/i, '');
+    const matches = base.match(/(?:^|[_-])(\d{6})(?=[_-]|$)/g) || [];
+    if (!matches.length) return '';
+    const last = matches[matches.length - 1].match(/\d{6}/);
+    return last ? last[0] : '';
+  }
+
   window.readApkMetadata = async function(file) {
     if (!(file instanceof File)) throw new Error('Please select an APK file.');
     if (!/\.apk$/i.test(file.name)) throw new Error('Selected file must have an .apk extension.');
@@ -160,6 +163,6 @@
     if (!title && metadata.labelResourceId) {
       try { const resources = await readZipEntry(file, 'resources.arsc'); title = resolveResourceString(resources, metadata.labelResourceId); } catch { /* Some APKs do not contain resources.arsc. */ }
     }
-    return { ...metadata, title, fileName: file.name, zipFileName: file.name.replace(/\.apk$/i, '.zip') };
+    return { ...metadata, title, revisionId: extractRevisionId(file.name), fileName: file.name, zipFileName: file.name.replace(/\.apk$/i, '.zip') };
   };
 })();
