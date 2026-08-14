@@ -1,9 +1,8 @@
 (() => {
   let modal;
-  let buildButton;
   const selectedFiles = { image: new Map(), pfx: new Map(), banner: new Map(), apk: new Map() };
   const $ = id => document.getElementById(id);
-  const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[c]));
+  const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[c]));
   function configFiles(type) { return window.phase2ConfigFiles?.[type] || selectedFiles[type]; }
   function crc32(bytes) { let crc = 0xffffffff; for (let i = 0; i < bytes.length; i++) { crc ^= bytes[i]; for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1)); } return (crc ^ 0xffffffff) >>> 0; }
   function u16(value) { return [value & 255, (value >>> 8) & 255]; }
@@ -20,14 +19,14 @@
     modal.innerHTML = `<div class="modal-dialog package-builder-dialog" role="dialog" aria-modal="true" aria-labelledby="packageBuilderTitle"><div class="modal-header"><div><h2 id="packageBuilderTitle">Build AppStore Package</h2><p>Prepare the AppStore folder structure locally.</p></div><button type="button" id="closePackageBuilder" class="icon-btn" aria-label="Close">×</button></div><div class="modal-body"><div id="packageBuilderSummary" class="package-builder-summary"></div><div id="packageBuilderList" class="package-builder-list"></div><div id="packageBuilderFiles" class="package-builder-files"></div><div id="packageBuilderError" class="form-error hidden"></div></div><div class="modal-footer"><button type="button" id="cancelPackageBuilder">Cancel</button><button type="button" id="buildPackageBtn" class="primary">Build & Download ZIP</button></div></div>`;
     document.body.appendChild(modal); $('closePackageBuilder').addEventListener('click', close); $('cancelPackageBuilder').addEventListener('click', close); $('buildPackageBtn').addEventListener('click', buildPackage);
   }
-  function getApplications() { return (state.appsConfig || []).map((app, index) => ({ app, index, file: selectedFiles.apk.get(String(index)) || app.sourceApkFile || null })).filter(x => x.app && x.app.packageName); }
+  function getApplications() { return (state.appsConfig || []).map((app, index) => ({ app, index, file: selectedFiles.apk.get(String(index)) || window.phase2PackageFiles?.apk?.get(String(index)) || app.sourceApkFile || null })).filter(x => x.app && x.app.packageName); }
   function getConfigFiles() { const image = state.imageConfig?.config || [], banners = Array.isArray(state.bannerConfig) ? state.bannerConfig : [], pfx = state.pfxConfig?.pfxFileName ? [state.pfxConfig] : []; return { image, banners, pfx }; }
   function renderApplicationRows() {
     const apps = getApplications(); $('packageBuilderList').innerHTML = apps.length ? apps.map(({ app, file }) => `<div class="package-builder-row"><div><b>${esc(app.title || app.appName)}</b><div>${esc(app.packageName)} · v${esc(app.appVersion)}</div></div><span class="package-file-status ${file ? 'ready' : 'missing'}">${file ? `✓ ${esc(file.name || 'APK selected')}` : 'APK not selected'}</span></div>`).join('') : '<div class="empty">No applications added yet.</div>';
   }
   function renderFileRows() {
     const { image, banners, pfx } = getConfigFiles(), sections=[];
-    const row=(type,key,label,folder)=>{const file=configFiles(type).get(key);return `<div class="package-config-file-row"><div class="package-config-file-main"><b>${esc(label)}</b><span>${esc(folder)}/</span></div><span class="package-file-status ${file?'ready':'missing'}">${file?`✓ ${esc(file.name || 'File selected')}`:'File not selected'}</span></div>`;};
+    const row=(type,key,label,folder)=>{const file=configFiles(type).get(key) || window.phase2PackageFiles?.[type]?.get(key);return `<div class="package-config-file-row"><div class="package-config-file-main"><b>${esc(label)}</b><span>${esc(folder)}/</span></div><span class="package-file-status ${file?'ready':'missing'}">${file?`✓ ${esc(file.name || 'File selected')}`:'File not selected'}</span></div>`;};
     if(image.length)sections.push(`<div class="package-config-section"><h3>Image Configuration Files</h3>${image.map((item,i)=>row('image',String(i),item.imageFileName||`Image ${i+1}`,'imageConfig')).join('')}</div>`);
     if(pfx.length)sections.push(`<div class="package-config-section"><h3>PFX Configuration File</h3>${row('pfx','0',pfx[0].pfxFileName,'pfxConfig')}</div>`);
     if(banners.length)sections.push(`<div class="package-config-section"><h3>Banner Configuration Files</h3>${banners.map((item,i)=>row('banner',String(i),item.bannerName||`Banner ${i+1}`,'bannerConfig')).join('')}</div>`);
@@ -44,15 +43,15 @@
       const entries=[];
       for(const {app,file} of apps){if(file){const bytes=new Uint8Array(await file.arrayBuffer());const zipName=(app.appName||file.name.replace(/\.apk$/i,'.zip')).replace(/\.apk$/i,'.zip');entries.push({name:`${app.packageName}/${zipName}`,data:bytes});}else{addEmptyFolder(entries,app.packageName);}}
       const {image,banners,pfx}=getConfigFiles();
-      for(let i=0;i<image.length;i++){const file=configFiles('image').get(String(i));if(file)entries.push({name:`imageConfig/${image[i].imageFileName}`,data:new Uint8Array(await file.arrayBuffer())});}
-      if(pfx.length){const file=configFiles('pfx').get('0');if(file)entries.push({name:`pfxConfig/${pfx[0].pfxFileName}`,data:new Uint8Array(await file.arrayBuffer())});}
-      for(let i=0;i<banners.length;i++){const file=configFiles('banner').get(String(i));if(file)entries.push({name:`bannerConfig/${banners[i].bannerName}`,data:new Uint8Array(await file.arrayBuffer())});}
+      for(let i=0;i<image.length;i++){const file=configFiles('image').get(String(i)) || window.phase2PackageFiles?.image?.get(String(i));if(file)entries.push({name:`imageConfig/${image[i].imageFileName}`,data:new Uint8Array(await file.arrayBuffer())});}
+      if(pfx.length){const file=configFiles('pfx').get('0') || window.phase2PackageFiles?.pfx?.get('0');if(file)entries.push({name:`pfxConfig/${pfx[0].pfxFileName}`,data:new Uint8Array(await file.arrayBuffer())});}
+      for(let i=0;i<banners.length;i++){const file=configFiles('banner').get(String(i)) || window.phase2PackageFiles?.banner?.get(String(i));if(file)entries.push({name:`bannerConfig/${banners[i].bannerName}`,data:new Uint8Array(await file.arrayBuffer())});}
       if(image.length)addEmptyFolder(entries,'imageConfig');if(pfx.length)addEmptyFolder(entries,'pfxConfig');if(banners.length)addEmptyFolder(entries,'bannerConfig');
       entries.push({name:'config.json',data:new TextEncoder().encode(JSON.stringify(buildOutput(),null,4))});
       const blob=makeZip(entries),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`AppStore_Package_${new Date().toISOString().slice(0,10)}.zip`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);close();if(typeof toast==='function')toast('AppStore package downloaded');
     }catch(e){showError(e.message||'Unable to build AppStore package.');}finally{button.disabled=false;button.textContent='Build & Download ZIP';}
   }
   function close(){if(modal)modal.classList.add('hidden');}
-  function init(){if($('buildPackageBtnTop'))return;const toolbar=document.querySelector('.toolbar');if(!toolbar)return;buildButton=document.createElement('button');buildButton.id='buildPackageBtnTop';buildButton.type='button';buildButton.textContent='Build Package';buildButton.className='secondary-btn';toolbar.insertBefore(buildButton,$('downloadBtn'));buildButton.addEventListener('click',open);ensureModal();}
+  function init(){const button=$('buildPackageBtnTop');if(!button||button.dataset.bound)return;button.dataset.bound='true';button.addEventListener('click',open);ensureModal();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
