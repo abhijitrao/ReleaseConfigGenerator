@@ -1,0 +1,152 @@
+{
+    "isRunOnBackground": true,
+    "isConfirmationRequired": false,
+    "isShowErrorMsg": false,
+    "isDownloadOverWifiOnly": false,
+    "appsConfig": [
+        {
+            "title": "Launcher App",
+            "appName": "LAUNCHER_HDFCMultiAppLauncher-v1.3_signed.zip",
+            "packageName": "com.verifone.adc.launcher",
+            "appVersion": "1.3",
+            "revisionId": "",
+            "isMandatoy": true,
+            "availabilityType": 0,
+            "tids": [],
+            "isDelete": false,
+            "deleteType": 0,
+            "deleteTids": [],
+            "modelName": [
+                "X990"
+            ],
+            "androidVersion": [
+                "7",
+                "10"
+            ],
+            "autoInstall": true,
+            "dependency": []
+        },
+        {
+            "title": "BonusHub App",
+            "appName": "BH_HDFC_MKSK_DIVYANG_020333_260812_DEV-debug.zip",
+            "packageName": "com.example.verifonevx990app",
+            "appVersion": "02.03.33",
+            "revisionId": "260812",
+            "isMandatoy": true,
+            "availabilityType": 0,
+            "tids": [],
+            "isDelete": false,
+            "deleteType": 0,
+            "deleteTids": [],
+            "modelName": [
+                "X990"
+            ],
+            "androidVersion": [
+                "7",
+                "10"
+            ],
+            "autoInstall": true,
+            "dependency": [
+                {
+                    "appName": "VFService_PermissionOff_4.6.0_260625_114534_debug_v1v2.zip",
+                    "packageName": "com.vfi.smartpos.deviceservice",
+                    "appVersion": "4.6.0"
+                },
+                {
+                    "appName": "VFX990SystemService_1.14.0_1000500_240929_release_v1v2.zip",
+                    "packageName": "com.vfi.smartpos.system_service",
+                    "appVersion": "1.14.0"
+                }
+            ]
+        },
+        {
+            "title": "VFService",
+            "appName": "VFService_PermissionOff_4.6.0_260625_114534_debug_v1v2.zip",
+            "packageName": "com.vfi.smartpos.deviceservice",
+            "appVersion": "4.6.0",
+            "revisionId": "260625",
+            "isMandatoy": true,
+            "availabilityType": 0,
+            "tids": [],
+            "isDelete": false,
+            "deleteType": 0,
+            "deleteTids": [],
+            "modelName": [
+                "X990"
+            ],
+            "androidVersion": [
+                "7",
+                "10"
+            ],
+            "autoInstall": false,
+            "dependency": []
+        },
+        {
+            "title": "SystemService",
+            "appName": "VFX990SystemService_1.14.0_1000500_240929_release_v1v2.zip",
+            "packageName": "com.vfi.smartpos.system_service",
+            "appVersion": "1.14.0",
+            "revisionId": "240929",
+            "isMandatoy": true,
+            "availabilityType": 0,
+            "tids": [],
+            "isDelete": false,
+            "deleteType": 0,
+            "deleteTids": [],
+            "modelName": [
+                "X990"
+            ],
+            "androidVersion": [
+                "7",
+                "10"
+            ],
+            "autoInstall": false,
+            "dependency": []
+        }
+    ],
+    "whiteListPackageName": "",
+    "imageConfig": {
+        "config": [
+            {
+                "startDate": "2024-01-01",
+                "endDate": "2024-01-01",
+                "imageFileName": "digipos.bmp",
+                "txnType": "all"
+            },
+            {
+                "startDate": "2024-01-01",
+                "endDate": "2024-01-01",
+                "imageFileName": "scanMe.png",
+                "txnType": "digitalChargeSlip"
+            },
+            {
+                "startDate": "2024-01-01",
+                "endDate": "2024-01-01",
+                "imageFileName": "lottieAnimTxn.json",
+                "txnType": "lottieAnimTxn"
+            }
+        ],
+        "timeStamp": "6"
+    },
+    "pfxConfig": {
+        "pfxFileName": "BHClient.p12",
+        "timeStamp": "1"
+    },
+    "bannerConfig": [
+        {
+            "bannerName": "POSAdvertise.zip",
+            "bannerId": "230108",
+            "availabilityType": 0,
+            "tids": []
+        }
+    ],
+    "supportConfig": {
+        "timeStamp": "1",
+        "helpLine": "30753737",
+        "preAuth": {
+            "dateExceededMessage": "Pre-Auth date exceeded/breached.",
+            "amountLimitMessage": "Completion amt should not be greater than the Pre-Auth amt.",
+            "completionReminderMessage": "Kindly ensure to complete pending pre-auth transaction on timely manner."
+        }
+    }
+}
