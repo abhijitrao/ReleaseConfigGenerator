@@ -58,6 +58,24 @@
   function attachAppListHook() {
     const container = $('appsContainer');
     if (!container) return;
+
+    // Keep the APK File object attached to the cloned application. The application
+    // clone logic lives in script.js and intentionally clones only config fields,
+    // so the non-JSON File reference must be restored after the clone is created.
+    container.addEventListener('click', e => {
+      const button = e.target.closest('button[data-action="clone"]');
+      if (!button) return;
+      const sourceIndex = Number(button.dataset.index);
+      const sourceFile = state.appsConfig[sourceIndex]?.sourceApkFile || null;
+      const countBefore = state.appsConfig.length;
+      setTimeout(() => {
+        if (state.appsConfig.length > countBefore && sourceFile) {
+          const clonedApp = state.appsConfig[state.appsConfig.length - 1];
+          if (clonedApp && !clonedApp.sourceApkFile) clonedApp.sourceApkFile = sourceFile;
+        }
+      }, 0);
+    }, true);
+
     container.addEventListener('click', e => {
       const button = e.target.closest('button[data-action="edit"]');
       if (!button) return;
