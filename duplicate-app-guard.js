@@ -38,6 +38,11 @@
   }
 
   function validateBuildPackage(event) {
+    // Duplicate package validation should only block the actual Build & Download
+    // action. It must never block unrelated buttons after a clone creates a duplicate.
+    const target = event.target?.closest?.('#buildPackageBtn');
+    if (!target) return;
+
     const duplicates = getDuplicatePackages();
     if (!duplicates.length) return;
 
