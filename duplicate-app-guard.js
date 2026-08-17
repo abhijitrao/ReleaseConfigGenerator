@@ -38,10 +38,8 @@
   }
 
   function validateBuildPackage(event) {
-    // Duplicate package validation should only block the actual Build & Download
-    // action. It must never block unrelated buttons after a clone creates a duplicate.
-    const target = event.target?.closest?.('#buildPackageBtn');
-    if (!target) return;
+    const buildButton = event.target.closest('#buildPackageBtn, #buildPackageBtnTop');
+    if (!buildButton) return;
 
     const duplicates = getDuplicatePackages();
     if (!duplicates.length) return;
@@ -58,6 +56,48 @@
       error.textContent = `Duplicate Package Name found. Each application must have a unique package name: ${details}`;
       error.classList.remove('hidden');
     }
+  }
+
+  // When an application is already used as another application's dependency,
+  // its dependency selector should not be editable here. Keep its existing
+  // dependency values as hidden checked inputs so saving the form does not
+  // accidentally clear them.
+  const originalUpdateDependencyOptions = window.updateDependencyOptions;
+  if (typeof originalUpdateDependencyOptions === 'function') {
+    window.updateDependencyOptions = function(selected = []) {
+      const current = Number($('editIndex')?.value ?? -1);
+      const container = $('dependencyOptions');
+
+      if (current >= 0 && container && typeof isDependencyOfAnotherApp === 'function' && isDependencyOfAnotherApp(current)) {
+        const linked = typeof getLinkedDependencyNames === 'function'
+          ? getLinkedDependencyNames(current)
+          : [];
+        const names = linked.length ? linked.map(escapeHtml).join(', ') : 'another application';
+
+        const preserved = Array.isArray(selected) ? selected : [];
+        const hiddenDependencies = preserved.map((dep, index) => `
+          <input
+            type="checkbox"
+            id="preservedDependency-${index}"
+            checked
+            hidden
+            data-app-name="${escapeHtml(dep.appName)}"
+            data-package="${escapeHtml(dep.packageName)}"
+            data-version="${escapeHtml(dep.appVersion)}"
+          >`).join('');
+
+        container.innerHTML = `
+          <div class="dependency-link" style="margin-top:0">
+            <span class="dependency-icon">↳</span>
+            <span class="dependency-label">Dependency of</span>
+            <span class="dependency-name">${names}</span>
+          </div>
+          ${hiddenDependencies}`;
+        return;
+      }
+
+      originalUpdateDependencyOptions(selected);
+    };
   }
 
   function init() {
