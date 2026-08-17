@@ -21,7 +21,7 @@
     return [...counts.values()].filter(entry => entry.titles.length > 1);
   }
 
-  function validateDuplicatePackages() {
+  function getDuplicateValidationError() {
     const duplicates = getDuplicatePackages();
     if (!duplicates.length) return null;
 
@@ -48,10 +48,8 @@
     showError(`Application with Package Name "${packageName}" is already added.`);
   }
 
-  // Expose duplicate validation for the package builder. The Build Package
-  // button itself is intentionally not intercepted here; package-builder.js
-  // must open its modal first so the user can see the validation message.
-  window.getDuplicatePackageValidationError = validateDuplicatePackages;
+  // Keep the validation available to other UI components.
+  window.getDuplicatePackageValidationError = getDuplicateValidationError;
 
   // When an application is already used as another application's dependency,
   // its dependency selector should not be editable here. Keep its existing
@@ -95,11 +93,43 @@
     };
   }
 
+  function validateBuildPackage(event) {
+    const buildButton = event.target.closest('#buildPackageBtnTop');
+    if (!buildButton) return;
+
+    // Do not block the top Build Package button before package-builder.js
+    // gets a chance to open its modal. Validate after the modal is opened.
+    setTimeout(() => {
+      const errorMessage = getDuplicateValidationError();
+      const packageBuilderError = $('packageBuilderError');
+      const packageBuildButton = $('buildPackageBtn');
+      if (!packageBuilderError || !packageBuildButton) return;
+
+      if (errorMessage) {
+        packageBuilderError.textContent = errorMessage;
+        packageBuilderError.classList.remove('hidden');
+        packageBuildButton.disabled = true;
+        packageBuildButton.title = 'Resolve duplicate package names before building.';
+      } else {
+        packageBuilderError.classList.add('hidden');
+        packageBuildButton.disabled = false;
+        packageBuildButton.title = '';
+      }
+    }, 0);
+  }
+
   function init() {
     const saveButton = $('saveAppBtn');
     if (saveButton && saveButton.dataset.duplicateGuardAttached !== 'true') {
       saveButton.addEventListener('click', validateDuplicatePackage, true);
       saveButton.dataset.duplicateGuardAttached = 'true';
+    }
+
+    if (document.documentElement.dataset.buildDuplicateGuardAttached !== 'true') {
+      // Bubble phase is intentional: package-builder.js must open the modal
+      // first. The old capture listener prevented the modal from opening.
+      document.addEventListener('click', validateBuildPackage);
+      document.documentElement.dataset.buildDuplicateGuardAttached = 'true';
     }
   }
 
