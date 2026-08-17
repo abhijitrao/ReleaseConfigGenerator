@@ -1,0 +1,13 @@
+/* Prevent the page behind an open modal from scrolling. */
+body:has(.json-validator-modal:not(.hidden)),
+body:has(.modal:not(.hidden)),
+body:has(.json-fullscreen-modal:not(.hidden)) {
+  overflow: hidden;
+}
+
+/* Keep scrolling inside the modal content areas only. */
+.json-validator-modal .json-validator-body,
+.modal .modal-dialog,
+.json-fullscreen-modal .json-fullscreen-dialog {
+  overscroll-behavior: contain;
+}
