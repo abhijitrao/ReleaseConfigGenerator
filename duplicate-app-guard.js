@@ -21,6 +21,17 @@
     return [...counts.values()].filter(entry => entry.titles.length > 1);
   }
 
+  function validateDuplicatePackages() {
+    const duplicates = getDuplicatePackages();
+    if (!duplicates.length) return null;
+
+    const details = duplicates
+      .map(entry => `${entry.name} (${entry.titles.join(', ')})`)
+      .join(' | ');
+
+    return `Duplicate Package Name found. Each application must have a unique package name: ${details}`;
+  }
+
   function validateDuplicatePackage(event) {
     const packageName = $('packageName')?.value.trim();
     if (!packageName || !Array.isArray(state.appsConfig)) return;
@@ -37,26 +48,10 @@
     showError(`Application with Package Name "${packageName}" is already added.`);
   }
 
-  function validateBuildPackage(event) {
-    const buildButton = event.target.closest('#buildPackageBtn, #buildPackageBtnTop');
-    if (!buildButton) return;
-
-    const duplicates = getDuplicatePackages();
-    if (!duplicates.length) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    const details = duplicates
-      .map(entry => `${entry.name} (${entry.titles.join(', ')})`)
-      .join(' | ');
-
-    const error = $('packageBuilderError');
-    if (error) {
-      error.textContent = `Duplicate Package Name found. Each application must have a unique package name: ${details}`;
-      error.classList.remove('hidden');
-    }
-  }
+  // Expose duplicate validation for the package builder. The Build Package
+  // button itself is intentionally not intercepted here; package-builder.js
+  // must open its modal first so the user can see the validation message.
+  window.getDuplicatePackageValidationError = validateDuplicatePackages;
 
   // When an application is already used as another application's dependency,
   // its dependency selector should not be editable here. Keep its existing
@@ -105,11 +100,6 @@
     if (saveButton && saveButton.dataset.duplicateGuardAttached !== 'true') {
       saveButton.addEventListener('click', validateDuplicatePackage, true);
       saveButton.dataset.duplicateGuardAttached = 'true';
-    }
-
-    if (document.documentElement.dataset.buildDuplicateGuardAttached !== 'true') {
-      document.addEventListener('click', validateBuildPackage, true);
-      document.documentElement.dataset.buildDuplicateGuardAttached = 'true';
     }
   }
 
