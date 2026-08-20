@@ -1,125 +1,33 @@
 (() => {
   const $ = id => document.getElementById(id);
   const TYPES = ['image', 'support'];
-
-  // Timestamp rules:
-  // 1. Fresh configuration starts at 0.
-  // 2. The first actual change makes it 1. Further fresh changes do not auto-increment.
-  // 3. Imported configuration keeps its timestamp and the first actual change increments it once.
-  // 4. Manual timestamp edit is final and disables automatic increment until the next import.
-  const status = Object.fromEntries(TYPES.map(type => [type, {
-    imported: false,
-    autoIncrementPending: true,
-    manuallyEdited: false
-  }]));
-
-  const numberTimestamp = value => {
-    const n = Number.parseInt(String(value ?? '').trim(), 10);
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  };
-
+  const status = Object.fromEntries(TYPES.map(type => [type, { imported:false, autoIncrementPending:true, manuallyEdited:false }]));
+  const numberTimestamp = value => { const n=Number.parseInt(String(value??'').trim(),10); return Number.isFinite(n)&&n>=0?n:0; };
   const contentSnapshot = type => {
-    if (type === 'image') return JSON.stringify(state.imageConfig?.config || []);
-    if (type === 'support') {
-      const s = state.supportConfig || {};
-      return JSON.stringify({
-        // chargeSlipUpload is part of supportConfig. Missing legacy/imported values
-        // resolve to the same default used by the UI (true).
-        chargeSlipUpload: s.chargeSlipUpload !== false,
-        helpLine: s.helpLine || '',
-        preAuth: s.preAuth || {}
-      });
+    if(type==='image') return JSON.stringify(state.imageConfig?.config||[]);
+    if(type==='support'){
+      const s=state.supportConfig||{};
+      // Keep a legacy imported missing key distinguishable from an explicit true.
+      // The UI defaults missing chargeSlipUpload to true, but adding that key is an actual change.
+      const chargeSlipUploadSnapshot = s.__chargeSlipUploadWasPresent === false ? '__MISSING__' : s.chargeSlipUpload !== false;
+      return JSON.stringify({chargeSlipUpload:chargeSlipUploadSnapshot,helpLine:s.helpLine||'',preAuth:s.preAuth||{}});
     }
     return '';
   };
-
-  const hasContent = type => contentSnapshot(type) !== (type === 'image' ? '[]' : '{"chargeSlipUpload":true,"helpLine":"","preAuth":{}}');
-
-  const getTimestamp = type => type === 'image'
-    ? state.imageConfig?.timeStamp
-    : state.supportConfig?.timeStamp;
-
-  const setTimestamp = (type, value) => {
-    const normalized = String(numberTimestamp(value));
-    if (type === 'image') state.imageConfig.timeStamp = normalized;
-    if (type === 'support') state.supportConfig.timeStamp = normalized;
-  };
-
-  function ensureInitialTimestamps() {
-    if (state.imageConfig && (state.imageConfig.timeStamp === '' || state.imageConfig.timeStamp == null)) state.imageConfig.timeStamp = '0';
-    if (state.supportConfig && (state.supportConfig.timeStamp === '' || state.supportConfig.timeStamp == null)) state.supportConfig.timeStamp = '0';
-  }
-
-  function markImported() {
-    TYPES.forEach(type => { status[type].imported = true; status[type].autoIncrementPending = true; status[type].manuallyEdited = false; });
-    setTimeout(() => { ensureInitialTimestamps(); updateHeaders(); cleanupEmptySupport(); }, 0);
-  }
-
-  function markFresh() {
-    TYPES.forEach(type => { status[type].imported = false; status[type].autoIncrementPending = true; status[type].manuallyEdited = false; });
-    setTimeout(() => { ensureInitialTimestamps(); updateHeaders(); cleanupEmptySupport(); }, 0);
-  }
-
-  function processChanges(before) {
-    TYPES.forEach(type => {
-      const current = status[type];
-      if (!current.autoIncrementPending || current.manuallyEdited) return;
-      const afterContent = contentSnapshot(type);
-      if (before[type].content !== afterContent) {
-        const oldTimestamp = numberTimestamp(before[type].timestamp);
-        setTimestamp(type, oldTimestamp + 1);
-        current.autoIncrementPending = false;
-      }
-    });
-    if (typeof renderAll === 'function') renderAll();
-    cleanupEmptySupport();
-    if (typeof refreshPreview === 'function') refreshPreview();
-    cleanupEmptySupport();
-    updateHeaders();
-  }
-
-  function cleanupEmptySupport() {
-    const list = $('supportConfigList'), button = $('addSupportBtn');
-    if (!list || !state.supportConfig) return;
-    const hasSupportData = !!(state.supportConfig.helpLine || state.supportConfig.preAuth?.dateExceededMessage || state.supportConfig.preAuth?.amountLimitMessage || state.supportConfig.preAuth?.completionReminderMessage);
-    if (!hasSupportData) { list.innerHTML = '<div class="empty">No support configuration added yet.</div>'; if (button) button.textContent = '+ Add Support'; }
-  }
-
-  function updateHeaders() {
-    const imageBadge = $('imageTimestampBadge');
-    if (imageBadge) { const value = getTimestamp('image'); imageBadge.textContent = value === '' || value == null ? '' : `Time Stamp: ${value}`; imageBadge.classList.toggle('hidden', value === '' || value == null); }
-    const supportBadge = $('supportTimestampBadge');
-    if (supportBadge) { const value = getTimestamp('support'); supportBadge.textContent = value === '' || value == null ? '' : `Time Stamp: ${value}`; supportBadge.classList.toggle('hidden', value === '' || value == null); }
-  }
-
-  function editTimestamp(type) {
-    const current = getTimestamp(type), value = window.prompt(`Edit ${type === 'image' ? 'Image' : 'Support'} Time Stamp`, String(current ?? 0));
-    if (value === null) return;
-    if (!/^\d+$/.test(value.trim())) { if (typeof toast === 'function') toast('Time Stamp must be a non-negative number'); return; }
-    setTimestamp(type, value.trim()); status[type].manuallyEdited = true; status[type].autoIncrementPending = false; status[type].imported = false;
-    updateHeaders(); if (typeof renderAll === 'function') renderAll(); cleanupEmptySupport(); if (typeof refreshPreview === 'function') refreshPreview(); cleanupEmptySupport(); if (typeof toast === 'function') toast('Time Stamp updated');
-  }
-
-  function addEditButtons() {
-    [{ type: 'image', buttonId: 'addImageBtn' }, { type: 'support', buttonId: 'addSupportBtn' }].forEach(({ type, buttonId }) => {
-      const button = $(buttonId); if (!button) return; const holder = button.parentElement;
-      if (holder?.querySelector(`[data-timestamp-edit="${type}"]`)) return;
-      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'timestamp-edit-btn'; edit.dataset.timestampEdit = type; edit.title = 'Edit Time Stamp'; edit.textContent = '✎'; holder.insertBefore(edit, button);
-    });
-    ensureInitialTimestamps(); cleanupEmptySupport(); updateHeaders();
-  }
-
-  document.addEventListener('click', event => {
-    const save = event.target.closest('#saveConfigBtn'), deleteButton = event.target.closest('[data-delete-config]');
-    if (!save && !deleteButton) return;
-    const before = Object.fromEntries(TYPES.map(type => [type, { content: contentSnapshot(type), timestamp: String(getTimestamp(type) ?? '') }]));
-    setTimeout(() => processChanges(before), 0);
-  }, true);
-
-  document.addEventListener('change', event => { if (event.target?.id === 'fileInput' && event.target.files?.length) markImported(); }, true);
-  document.addEventListener('click', event => { if (event.target.closest('#newBtn')) markFresh(); }, true);
-  document.addEventListener('click', event => { const edit = event.target.closest('[data-timestamp-edit]'); if (edit) editTimestamp(edit.dataset.timestampEdit); });
-
-  const boot = () => { addEditButtons(); updateHeaders(); };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  const getTimestamp=type=>type==='image'?state.imageConfig?.timeStamp:state.supportConfig?.timeStamp;
+  const setTimestamp=(type,value)=>{const normalized=String(numberTimestamp(value));if(type==='image')state.imageConfig.timeStamp=normalized;if(type==='support')state.supportConfig.timeStamp=normalized;};
+  function ensureInitialTimestamps(){if(state.imageConfig&&(state.imageConfig.timeStamp===''||state.imageConfig.timeStamp==null))state.imageConfig.timeStamp='0';if(state.supportConfig&&(state.supportConfig.timeStamp===''||state.supportConfig.timeStamp==null))state.supportConfig.timeStamp='0';}
+  function markImported(){TYPES.forEach(type=>{status[type].imported=true;status[type].autoIncrementPending=true;status[type].manuallyEdited=false;});setTimeout(()=>{ensureInitialTimestamps();updateHeaders();cleanupEmptySupport();},0);}
+  function markFresh(){TYPES.forEach(type=>{status[type].imported=false;status[type].autoIncrementPending=true;status[type].manuallyEdited=false;});setTimeout(()=>{ensureInitialTimestamps();updateHeaders();cleanupEmptySupport();},0);}
+  function processChanges(before){TYPES.forEach(type=>{const current=status[type];if(!current.autoIncrementPending||current.manuallyEdited)return;const afterContent=contentSnapshot(type);if(before[type].content!==afterContent){setTimestamp(type,numberTimestamp(before[type].timestamp)+1);current.autoIncrementPending=false;}});if(typeof renderAll==='function')renderAll();cleanupEmptySupport();if(typeof refreshPreview==='function')refreshPreview();cleanupEmptySupport();updateHeaders();}
+  function cleanupEmptySupport(){const list=$('supportConfigList'),button=$('addSupportBtn');if(!list||!state.supportConfig)return;const hasSupportData=!!(state.supportConfig.helpLine||state.supportConfig.preAuth?.dateExceededMessage||state.supportConfig.preAuth?.amountLimitMessage||state.supportConfig.preAuth?.completionReminderMessage);if(!hasSupportData){list.innerHTML='<div class="empty">No support configuration added yet.</div>';if(button)button.textContent='+ Add Support';}}
+  function updateHeaders(){const imageBadge=$('imageTimestampBadge');if(imageBadge){const value=getTimestamp('image');imageBadge.textContent=value===''||value==null?'':`Time Stamp: ${value}`;imageBadge.classList.toggle('hidden',value===''||value==null);}const supportBadge=$('supportTimestampBadge');if(supportBadge){const value=getTimestamp('support');supportBadge.textContent=value===''||value==null?'':`Time Stamp: ${value}`;supportBadge.classList.toggle('hidden',value===''||value==null);}}
+  function editTimestamp(type){const current=getTimestamp(type),value=window.prompt(`Edit ${type==='image'?'Image':'Support'} Time Stamp`,String(current??0));if(value===null)return;if(!/^\d+$/.test(value.trim())){if(typeof toast==='function')toast('Time Stamp must be a non-negative number');return;}setTimestamp(type,value.trim());status[type].manuallyEdited=true;status[type].autoIncrementPending=false;status[type].imported=false;updateHeaders();if(typeof renderAll==='function')renderAll();cleanupEmptySupport();if(typeof refreshPreview==='function')refreshPreview();cleanupEmptySupport();if(typeof toast==='function')toast('Time Stamp updated');}
+  function addEditButtons(){[{type:'image',buttonId:'addImageBtn'},{type:'support',buttonId:'addSupportBtn'}].forEach(({type,buttonId})=>{const button=$(buttonId);if(!button)return;const holder=button.parentElement;if(holder?.querySelector(`[data-timestamp-edit="${type}"]`))return;const edit=document.createElement('button');edit.type='button';edit.className='timestamp-edit-btn';edit.dataset.timestampEdit=type;edit.title='Edit Time Stamp';edit.textContent='✎';holder.insertBefore(edit,button);});ensureInitialTimestamps();cleanupEmptySupport();updateHeaders();}
+  document.addEventListener('click',event=>{const save=event.target.closest('#saveConfigBtn'),deleteButton=event.target.closest('[data-delete-config]');if(!save&&!deleteButton)return;const before=Object.fromEntries(TYPES.map(type=>[type,{content:contentSnapshot(type),timestamp:String(getTimestamp(type)??'')}]));setTimeout(()=>processChanges(before),0);},true);
+  document.addEventListener('change',event=>{if(event.target?.id==='fileInput'&&event.target.files?.length)markImported();},true);
+  document.addEventListener('click',event=>{if(event.target.closest('#newBtn'))markFresh();});
+  document.addEventListener('click',event=>{const edit=event.target.closest('[data-timestamp-edit]');if(edit)editTimestamp(edit.dataset.timestampEdit);});
+  const boot=()=>{addEditButtons();updateHeaders();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
