@@ -23,6 +23,9 @@
     if (type === 'support') {
       const s = state.supportConfig || {};
       return JSON.stringify({
+        // chargeSlipUpload is part of supportConfig. Missing legacy/imported values
+        // resolve to the same default used by the UI (true).
+        chargeSlipUpload: s.chargeSlipUpload !== false,
         helpLine: s.helpLine || '',
         preAuth: s.preAuth || {}
       });
@@ -30,7 +33,7 @@
     return '';
   };
 
-  const hasContent = type => contentSnapshot(type) !== (type === 'image' ? '[]' : '{"helpLine":"","preAuth":{}}');
+  const hasContent = type => contentSnapshot(type) !== (type === 'image' ? '[]' : '{"chargeSlipUpload":true,"helpLine":"","preAuth":{}}');
 
   const getTimestamp = type => type === 'image'
     ? state.imageConfig?.timeStamp
@@ -43,48 +46,24 @@
   };
 
   function ensureInitialTimestamps() {
-    if (state.imageConfig && (state.imageConfig.timeStamp === '' || state.imageConfig.timeStamp == null)) {
-      state.imageConfig.timeStamp = '0';
-    }
-    if (state.supportConfig && (state.supportConfig.timeStamp === '' || state.supportConfig.timeStamp == null)) {
-      state.supportConfig.timeStamp = '0';
-    }
+    if (state.imageConfig && (state.imageConfig.timeStamp === '' || state.imageConfig.timeStamp == null)) state.imageConfig.timeStamp = '0';
+    if (state.supportConfig && (state.supportConfig.timeStamp === '' || state.supportConfig.timeStamp == null)) state.supportConfig.timeStamp = '0';
   }
 
   function markImported() {
-    TYPES.forEach(type => {
-      status[type].imported = true;
-      status[type].autoIncrementPending = true;
-      status[type].manuallyEdited = false;
-    });
-
-    // Let the real import handler replace state first, then normalize missing timestamps.
-    setTimeout(() => {
-      ensureInitialTimestamps();
-      updateHeaders();
-      cleanupEmptySupport();
-    }, 0);
+    TYPES.forEach(type => { status[type].imported = true; status[type].autoIncrementPending = true; status[type].manuallyEdited = false; });
+    setTimeout(() => { ensureInitialTimestamps(); updateHeaders(); cleanupEmptySupport(); }, 0);
   }
 
   function markFresh() {
-    TYPES.forEach(type => {
-      status[type].imported = false;
-      status[type].autoIncrementPending = true;
-      status[type].manuallyEdited = false;
-    });
-
-    setTimeout(() => {
-      ensureInitialTimestamps();
-      updateHeaders();
-      cleanupEmptySupport();
-    }, 0);
+    TYPES.forEach(type => { status[type].imported = false; status[type].autoIncrementPending = true; status[type].manuallyEdited = false; });
+    setTimeout(() => { ensureInitialTimestamps(); updateHeaders(); cleanupEmptySupport(); }, 0);
   }
 
   function processChanges(before) {
     TYPES.forEach(type => {
       const current = status[type];
       if (!current.autoIncrementPending || current.manuallyEdited) return;
-
       const afterContent = contentSnapshot(type);
       if (before[type].content !== afterContent) {
         const oldTimestamp = numberTimestamp(before[type].timestamp);
@@ -92,7 +71,6 @@
         current.autoIncrementPending = false;
       }
     });
-
     if (typeof renderAll === 'function') renderAll();
     cleanupEmptySupport();
     if (typeof refreshPreview === 'function') refreshPreview();
@@ -101,121 +79,47 @@
   }
 
   function cleanupEmptySupport() {
-    const list = $('supportConfigList');
-    const button = $('addSupportBtn');
+    const list = $('supportConfigList'), button = $('addSupportBtn');
     if (!list || !state.supportConfig) return;
-
-    const hasSupportData = !!(
-      state.supportConfig.helpLine ||
-      state.supportConfig.preAuth?.dateExceededMessage ||
-      state.supportConfig.preAuth?.amountLimitMessage ||
-      state.supportConfig.preAuth?.completionReminderMessage
-    );
-
-    if (!hasSupportData) {
-      list.innerHTML = '<div class="empty">No support configuration added yet.</div>';
-      if (button) button.textContent = '+ Add Support';
-    }
+    const hasSupportData = !!(state.supportConfig.helpLine || state.supportConfig.preAuth?.dateExceededMessage || state.supportConfig.preAuth?.amountLimitMessage || state.supportConfig.preAuth?.completionReminderMessage);
+    if (!hasSupportData) { list.innerHTML = '<div class="empty">No support configuration added yet.</div>'; if (button) button.textContent = '+ Add Support'; }
   }
 
   function updateHeaders() {
     const imageBadge = $('imageTimestampBadge');
-    if (imageBadge) {
-      const value = getTimestamp('image');
-      imageBadge.textContent = value === '' || value == null ? '' : `Time Stamp: ${value}`;
-      imageBadge.classList.toggle('hidden', value === '' || value == null);
-    }
-
+    if (imageBadge) { const value = getTimestamp('image'); imageBadge.textContent = value === '' || value == null ? '' : `Time Stamp: ${value}`; imageBadge.classList.toggle('hidden', value === '' || value == null); }
     const supportBadge = $('supportTimestampBadge');
-    if (supportBadge) {
-      const value = getTimestamp('support');
-      supportBadge.textContent = value === '' || value == null ? '' : `Time Stamp: ${value}`;
-      supportBadge.classList.toggle('hidden', value === '' || value == null);
-    }
+    if (supportBadge) { const value = getTimestamp('support'); supportBadge.textContent = value === '' || value == null ? '' : `Time Stamp: ${value}`; supportBadge.classList.toggle('hidden', value === '' || value == null); }
   }
 
   function editTimestamp(type) {
-    const current = getTimestamp(type);
-    const value = window.prompt(`Edit ${type === 'image' ? 'Image' : 'Support'} Time Stamp`, String(current ?? 0));
+    const current = getTimestamp(type), value = window.prompt(`Edit ${type === 'image' ? 'Image' : 'Support'} Time Stamp`, String(current ?? 0));
     if (value === null) return;
-    if (!/^\d+$/.test(value.trim())) {
-      if (typeof toast === 'function') toast('Time Stamp must be a non-negative number');
-      return;
-    }
-
-    setTimestamp(type, value.trim());
-
-    // Manual timestamp is final. No future automatic increment until next JSON import.
-    status[type].manuallyEdited = true;
-    status[type].autoIncrementPending = false;
-    status[type].imported = false;
-
-    updateHeaders();
-    if (typeof renderAll === 'function') renderAll();
-    cleanupEmptySupport();
-    if (typeof refreshPreview === 'function') refreshPreview();
-    cleanupEmptySupport();
-    if (typeof toast === 'function') toast('Time Stamp updated');
+    if (!/^\d+$/.test(value.trim())) { if (typeof toast === 'function') toast('Time Stamp must be a non-negative number'); return; }
+    setTimestamp(type, value.trim()); status[type].manuallyEdited = true; status[type].autoIncrementPending = false; status[type].imported = false;
+    updateHeaders(); if (typeof renderAll === 'function') renderAll(); cleanupEmptySupport(); if (typeof refreshPreview === 'function') refreshPreview(); cleanupEmptySupport(); if (typeof toast === 'function') toast('Time Stamp updated');
   }
 
   function addEditButtons() {
-    [
-      { type: 'image', buttonId: 'addImageBtn' },
-      { type: 'support', buttonId: 'addSupportBtn' }
-    ].forEach(({ type, buttonId }) => {
-      const button = $(buttonId);
-      if (!button) return;
-      const holder = button.parentElement;
+    [{ type: 'image', buttonId: 'addImageBtn' }, { type: 'support', buttonId: 'addSupportBtn' }].forEach(({ type, buttonId }) => {
+      const button = $(buttonId); if (!button) return; const holder = button.parentElement;
       if (holder?.querySelector(`[data-timestamp-edit="${type}"]`)) return;
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'timestamp-edit-btn';
-      edit.dataset.timestampEdit = type;
-      edit.title = 'Edit Time Stamp';
-      edit.textContent = '✎';
-      holder.insertBefore(edit, button);
+      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'timestamp-edit-btn'; edit.dataset.timestampEdit = type; edit.title = 'Edit Time Stamp'; edit.textContent = '✎'; holder.insertBefore(edit, button);
     });
-    ensureInitialTimestamps();
-    cleanupEmptySupport();
-    updateHeaders();
+    ensureInitialTimestamps(); cleanupEmptySupport(); updateHeaders();
   }
 
-  // Capture before configuration save/delete changes state.
   document.addEventListener('click', event => {
-    const save = event.target.closest('#saveConfigBtn');
-    const deleteButton = event.target.closest('[data-delete-config]');
+    const save = event.target.closest('#saveConfigBtn'), deleteButton = event.target.closest('[data-delete-config]');
     if (!save && !deleteButton) return;
-
-    const before = Object.fromEntries(TYPES.map(type => [type, {
-      content: contentSnapshot(type),
-      timestamp: String(getTimestamp(type) ?? '')
-    }]));
-
+    const before = Object.fromEntries(TYPES.map(type => [type, { content: contentSnapshot(type), timestamp: String(getTimestamp(type) ?? '') }]));
     setTimeout(() => processChanges(before), 0);
   }, true);
 
-  // Import is the only event that arms the imported configuration for its one automatic increment.
-  document.addEventListener('change', event => {
-    if (event.target?.id === 'fileInput' && event.target.files?.length) {
-      markImported();
-    }
-  }, true);
+  document.addEventListener('change', event => { if (event.target?.id === 'fileInput' && event.target.files?.length) markImported(); }, true);
+  document.addEventListener('click', event => { if (event.target.closest('#newBtn')) markFresh(); }, true);
+  document.addEventListener('click', event => { const edit = event.target.closest('[data-timestamp-edit]'); if (edit) editTimestamp(edit.dataset.timestampEdit); });
 
-  // New configuration starts at 0 and allows only its first actual change to become 1.
-  document.addEventListener('click', event => {
-    if (event.target.closest('#newBtn')) markFresh();
-  }, true);
-
-  document.addEventListener('click', event => {
-    const edit = event.target.closest('[data-timestamp-edit]');
-    if (edit) editTimestamp(edit.dataset.timestampEdit);
-  });
-
-  const boot = () => {
-    addEditButtons();
-    updateHeaders();
-  };
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
+  const boot = () => { addEditButtons(); updateHeaders(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
