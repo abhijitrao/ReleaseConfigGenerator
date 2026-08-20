@@ -6,7 +6,7 @@
     imageConfig: { config: [], timeStamp: '' },
     pfxConfig: { pfxFileName: '', timeStamp: '' },
     bannerConfig: [],
-    supportConfig: { timeStamp: '', helpLine: '', preAuth: { dateExceededMessage: '', amountLimitMessage: '', completionReminderMessage: '' } }
+    supportConfig: { timeStamp: '', chargeSlipUpload: true, helpLine: '', preAuth: { dateExceededMessage: '', amountLimitMessage: '', completionReminderMessage: '' } }
   };
   let editingType = '';
   let editingIndex = -1;
@@ -18,7 +18,9 @@
   function ensureState() {
     state.imageConfig ||= { config: [], timeStamp: '' }; state.imageConfig.config ||= [];
     state.pfxConfig ||= { pfxFileName: '', timeStamp: '' }; state.bannerConfig ||= [];
-    state.supportConfig ||= structuredClone(defaults.supportConfig); state.supportConfig.preAuth ||= structuredClone(defaults.supportConfig.preAuth);
+    state.supportConfig ||= structuredClone(defaults.supportConfig);
+    state.supportConfig.preAuth ||= structuredClone(defaults.supportConfig.preAuth);
+    if (typeof state.supportConfig.chargeSlipUpload !== 'boolean') state.supportConfig.chargeSlipUpload = true;
   }
   function renderImages() {
     const list = $('imageConfigList'), items = state.imageConfig.config || [], timestamp = $('imageTimestampBadge');
@@ -38,22 +40,12 @@
   }
   function renderSupport() {
     const list=$('supportConfigList'), s=state.supportConfig;
-    // A support configuration with timestamp 0 is considered uninitialized and must not appear in the list.
-    if (String(s.timeStamp ?? '').trim() === '0') {
-      list.innerHTML='<div class="empty">No support configuration added yet.</div>';
-      $('addSupportBtn').textContent='+ Add Support';
-      return;
-    }
-    const hasData=!!(
-      String(s.helpLine || '').trim() ||
-      String(s.preAuth?.dateExceededMessage || '').trim() ||
-      String(s.preAuth?.amountLimitMessage || '').trim() ||
-      String(s.preAuth?.completionReminderMessage || '').trim()
-    );
+    if (String(s.timeStamp ?? '').trim() === '0') { list.innerHTML='<div class="empty">No support configuration added yet.</div>'; $('addSupportBtn').textContent='+ Add Support'; return; }
+    const hasData=!!(String(s.helpLine || '').trim() || String(s.preAuth?.dateExceededMessage || '').trim() || String(s.preAuth?.amountLimitMessage || '').trim() || String(s.preAuth?.completionReminderMessage || '').trim());
     if(!hasData){list.innerHTML='<div class="empty">No support configuration added yet.</div>';$('addSupportBtn').textContent='+ Add Support';return;}
     const messages=[['Date Exceeded',s.preAuth.dateExceededMessage],['Amount Limit',s.preAuth.amountLimitMessage],['Completion Reminder',s.preAuth.completionReminderMessage]], count=messages.filter(([,v])=>v).length;
     const details=messages.filter(([,v])=>v).map(([label,value])=>`<div class="support-message"><span class="config-preview-label">${esc(label)}</span><span>${esc(value)}</span></div>`).join('');
-    list.innerHTML=shell('Support & Pre-Auth',`<span>Help Line: ${esc(s.helpLine || '-')}</span><span class="meta-separator">·</span><span>Time Stamp: ${esc(s.timeStamp || '-')}</span>`,[badge('Support','blue-soft'),s.helpLine?badge(`Help Line ${s.helpLine}`):'',badge(`${count} Pre-Auth Message${count===1?'':'s'}`)],'support',0,details?`<div class="config-preview-line support-preview"><span class="config-preview-label">Pre-Auth</span><div class="support-message-list">${details}</div></div>`:'');
+    list.innerHTML=shell('Support & Pre-Auth',`<span>Help Line: ${esc(s.helpLine || '-')}</span><span class="meta-separator">·</span><span>Time Stamp: ${esc(s.timeStamp || '-')}</span>`,[badge('Support','blue-soft'),s.helpLine?badge(`Help Line ${s.helpLine}`):'',badge(`${count} Pre-Auth Message${count===1?'':'s'}`),badge(s.chargeSlipUpload === false ? 'Charge Slip Upload: Off' : 'Charge Slip Upload: On')],'support',0,details?`<div class="config-preview-line support-preview"><span class="config-preview-label">Pre-Auth</span><div class="support-message-list">${details}</div></div>`:'');
     $('addSupportBtn').textContent='Edit Support';
   }
   function renderAll(){ensureState();renderImages();renderPfx();renderBanners();renderSupport();}
@@ -61,7 +53,7 @@
     if(type==='image'){title=index>=0?'Edit Image Configuration':'Add Image Configuration';subtitle='Configure image file, date range and transaction type.';const item=index>=0?state.imageConfig.config[index]:{startDate:'',endDate:'',imageFileName:'',txnType:'all'};html=`<div class="form-grid"><div class="field"><label for="cfgStartDate">Start Date *</label><input id="cfgStartDate" type="date" value="${esc(item.startDate)}"></div><div class="field"><label for="cfgEndDate">End Date *</label><input id="cfgEndDate" type="date" value="${esc(item.endDate)}"></div></div><div class="form-grid single-row form-row"><div class="field"><label for="cfgImageFileName">Image File Name *</label><input id="cfgImageFileName" value="${esc(item.imageFileName)}"></div></div><div class="form-grid single-row"><div class="field"><label for="cfgTxnType">Transaction Type</label><input id="cfgTxnType" value="${esc(item.txnType||'all')}" placeholder="all"></div></div>`;
     }else if(type==='pfx'){title=state.pfxConfig.pfxFileName?'Edit PFX Configuration':'Add PFX Configuration';subtitle='Configure the client certificate file.';html=`<div class="form-grid"><div class="field"><label for="cfgPfxFileName">PFX File Name *</label><input id="cfgPfxFileName" value="${esc(state.pfxConfig.pfxFileName)}" placeholder="BHClient.p12"></div><div class="field"><label for="cfgPfxTimestamp">Time Stamp</label><input id="cfgPfxTimestamp" value="${esc(state.pfxConfig.timeStamp)}" placeholder="1"></div></div>`;
     }else if(type==='banner'){title=index>=0?'Edit Banner Configuration':'Add Banner Configuration';subtitle='Configure banner file and TID availability.';const item=index>=0?state.bannerConfig[index]:{bannerName:'',bannerId:'',availabilityType:0,tids:[]};html=`<div class="form-grid"><div class="field"><label for="cfgBannerName">Banner Name *</label><input id="cfgBannerName" value="${esc(item.bannerName)}"></div><div class="field"><label for="cfgBannerId">Banner ID</label><input id="cfgBannerId" value="${esc(item.bannerId)}"></div></div><div class="form-grid single-row form-row"><div class="field"><label for="cfgBannerAvailability">Availability Type</label><select id="cfgBannerAvailability"><option value="0" ${Number(item.availabilityType)===0?'selected':''}>All</option><option value="1" ${Number(item.availabilityType)===1?'selected':''}>TID Based</option></select></div></div><div id="cfgBannerTidWrap" class="section-block ${Number(item.availabilityType)===1?'':'hidden'}"><h3>TIDs</h3><textarea id="cfgBannerTids" rows="5" placeholder="One TID per line or comma-separated TIDs">${esc((item.tids||[]).join('\n'))}</textarea></div>`;
-    }else if(type==='support'){title=state.supportConfig.helpLine||state.supportConfig.timeStamp?'Edit Support Configuration':'Add Support Configuration';subtitle='Configure help line and pre-auth messages.';const s=state.supportConfig;html=`<div class="form-grid single-row"><div class="field"><label for="cfgHelpLine">Help Line</label><input id="cfgHelpLine" value="${esc(s.helpLine)}"></div></div><div class="section-block"><h3>Pre-Auth Messages</h3><div class="config-message-grid"><div class="field"><label for="cfgDateExceeded">Date Exceeded Message</label><textarea id="cfgDateExceeded" rows="3">${esc(s.preAuth.dateExceededMessage)}</textarea></div><div class="field"><label for="cfgAmountLimit">Amount Limit Message</label><textarea id="cfgAmountLimit" rows="3">${esc(s.preAuth.amountLimitMessage)}</textarea></div><div class="field"><label for="cfgCompletionReminder">Completion Reminder Message</label><textarea id="cfgCompletionReminder" rows="3">${esc(s.preAuth.completionReminderMessage)}</textarea></div></div></div>`;}
+    }else if(type==='support'){title=state.supportConfig.helpLine||state.supportConfig.timeStamp?'Edit Support Configuration':'Add Support Configuration';subtitle='Configure charge slip upload, help line and pre-auth messages.';const s=state.supportConfig;html=`<div class="form-grid single-row"><div class="field"><label for="cfgHelpLine">Help Line</label><input id="cfgHelpLine" value="${esc(s.helpLine)}"></div></div><div class="section-block option-row"><label class="switch-row"><input id="cfgChargeSlipUpload" type="checkbox" ${s.chargeSlipUpload !== false ? 'checked' : ''}><span>Charge Slip Upload</span></label></div><div class="section-block"><h3>Pre-Auth Messages</h3><div class="config-message-grid"><div class="field"><label for="cfgDateExceeded">Date Exceeded Message</label><textarea id="cfgDateExceeded" rows="3">${esc(s.preAuth.dateExceededMessage)}</textarea></div><div class="field"><label for="cfgAmountLimit">Amount Limit Message</label><textarea id="cfgAmountLimit" rows="3">${esc(s.preAuth.amountLimitMessage)}</textarea></div><div class="field"><label for="cfgCompletionReminder">Completion Reminder Message</label><textarea id="cfgCompletionReminder" rows="3">${esc(s.preAuth.completionReminderMessage)}</textarea></div></div></div>`;}
     $('configModalTitle').textContent=title;$('configModalSubtitle').textContent=subtitle;body.innerHTML=html;$('configModal').classList.remove('hidden');const first=body.querySelector('input,select,textarea');if(first)first.focus();if(type==='banner')$('cfgBannerAvailability').addEventListener('change',()=>$('cfgBannerTidWrap').classList.toggle('hidden',$('cfgBannerAvailability').value!=='1'));
   }
   function closeModal(){$('configModal').classList.add('hidden');editingType='';editingIndex=-1;}
@@ -69,7 +61,7 @@
     if(editingType==='image'){const item={startDate:$('cfgStartDate').value,endDate:$('cfgEndDate').value,imageFileName:$('cfgImageFileName').value.trim(),txnType:$('cfgTxnType').value.trim()||'all'};if(!item.startDate||!item.endDate||!item.imageFileName)return toast('Start Date, End Date and Image File Name are required');if(editingIndex>=0)state.imageConfig.config[editingIndex]=item;else state.imageConfig.config.push(item);
     }else if(editingType==='pfx'){const fileName=$('cfgPfxFileName').value.trim();const timestamp=$('cfgPfxTimestamp').value.trim();if(!fileName)return toast('PFX File Name is required');state.pfxConfig={pfxFileName:fileName,timeStamp:timestamp};
     }else if(editingType==='banner'){const item={bannerName:$('cfgBannerName').value.trim(),bannerId:$('cfgBannerId').value.trim(),availabilityType:Number($('cfgBannerAvailability').value),tids:$('cfgBannerAvailability').value==='1'?$('cfgBannerTids').value.split(/[\r\n,]+/).map(v=>v.trim()).filter(Boolean):[]};if(!item.bannerName)return toast('Banner Name is required');if(editingIndex>=0)state.bannerConfig[editingIndex]=item;else state.bannerConfig.push(item);
-    }else if(editingType==='support'){state.supportConfig={timeStamp:state.supportConfig.timeStamp||'',helpLine:$('cfgHelpLine').value.trim(),preAuth:{dateExceededMessage:$('cfgDateExceeded').value,amountLimitMessage:$('cfgAmountLimit').value,completionReminderMessage:$('cfgCompletionReminder').value}};}
+    }else if(editingType==='support'){state.supportConfig={timeStamp:state.supportConfig.timeStamp||'',chargeSlipUpload:$('cfgChargeSlipUpload').checked,helpLine:$('cfgHelpLine').value.trim(),preAuth:{dateExceededMessage:$('cfgDateExceeded').value,amountLimitMessage:$('cfgAmountLimit').value,completionReminderMessage:$('cfgCompletionReminder').value}};}
     renderAll();refreshPreview();closeModal();toast('Configuration saved');
   }
   function deleteConfig(type,index){if(!confirm('Delete this configuration?'))return;if(type==='image')state.imageConfig.config.splice(index,1);if(type==='banner')state.bannerConfig.splice(index,1);if(type==='pfx')state.pfxConfig={pfxFileName:'',timeStamp:''};if(type==='support')state.supportConfig=structuredClone(defaults.supportConfig);renderAll();refreshPreview();toast('Configuration deleted');}
