@@ -1,0 +1,124 @@
+name: Build Chrome-based AppStore - Config Manager
+
+on:
+  push:
+    branches:
+      - feature/chrome-packaging
+    paths:
+      - "launcher.py"
+      - "index.html"
+      - "version.js"
+      - "*.js"
+      - "*.css"
+      - "v01/**"
+      - "v02/**"
+      - "sample.json"
+      - "requirements-build.txt"
+      - "build-chrome-exe.bat"
+      - "build-chrome-linux.sh"
+      - ".github/workflows/build-chrome-packaging.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependency
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Build EXE
+        shell: cmd
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name "AppStore - Config Manager" ^
+            --add-data "index.html;." ^
+            --add-data "version.js;." ^
+            --add-data "style.css;." ^
+            --add-data "config-list.css;." ^
+            --add-data "validate-json.css;." ^
+            --add-data "phase2.css;." ^
+            --add-data "modal-scroll-lock.css;." ^
+            --add-data "apk-reader.js;." ^
+            --add-data "script.js;." ^
+            --add-data "config-ui.js;." ^
+            --add-data "config-import-render.js;." ^
+            --add-data "timestamp-manager.js;." ^
+            --add-data "modal-behavior.js;." ^
+            --add-data "json-validator.js;." ^
+            --add-data "import-json-validation.js;." ^
+            --add-data "apk-ui.js;." ^
+            --add-data "duplicate-app-guard.js;." ^
+            --add-data "config-file-chooser.js;." ^
+            --add-data "package-importer.js;." ^
+            --add-data "package-builder.js;." ^
+            --add-data "sample.json;." ^
+            --add-data "v01;v01" ^
+            --add-data "v02;v02" ^
+            launcher.py
+
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Release-Config-Generator-Chrome-Windows
+          path: "dist/AppStore - Config Manager.exe"
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependency
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Build Linux executable
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config Manager" \
+            --add-data "index.html:." \
+            --add-data "version.js:." \
+            --add-data "style.css:." \
+            --add-data "config-list.css:." \
+            --add-data "validate-json.css:." \
+            --add-data "phase2.css:." \
+            --add-data "modal-scroll-lock.css:." \
+            --add-data "apk-reader.js:." \
+            --add-data "script.js:." \
+            --add-data "config-ui.js:." \
+            --add-data "config-import-render.js:." \
+            --add-data "timestamp-manager.js:." \
+            --add-data "modal-behavior.js:." \
+            --add-data "json-validator.js:." \
+            --add-data "import-json-validation.js:." \
+            --add-data "apk-ui.js:." \
+            --add-data "duplicate-app-guard.js:." \
+            --add-data "config-file-chooser.js:." \
+            --add-data "package-importer.js:." \
+            --add-data "package-builder.js:." \
+            --add-data "sample.json:." \
+            --add-data "v01:v01" \
+            --add-data "v02:v02" \
+            launcher.py
+          chmod +x "dist/AppStore - Config Manager"
+
+      - name: Upload Linux executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Release-Config-Generator-Chrome-Linux
+          path: "dist/AppStore - Config Manager"
+          if-no-files-found: error

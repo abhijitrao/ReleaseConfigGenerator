@@ -1,4 +1,4 @@
-window.RELEASE_CONFIG_TOOL_VERSION = '1.2';
+window.RELEASE_CONFIG_TOOL_VERSION = '2.0';
 
 (() => {
   const style = document.createElement('style');
