@@ -28,6 +28,7 @@ python3 -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config M
   --add-data "sample.json:." \
   --add-data "v01:v01" \
   --add-data "v02:v02" \
+  --distpath "dist/Linux" \\
   launcher.py
 
 chmod +x "dist/Linux/AppStore - Config Manager"
