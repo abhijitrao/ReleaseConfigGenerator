@@ -30,5 +30,9 @@ python3 -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config M
   --add-data "v02:v02" \
   launcher.py
 
-chmod +x "dist/AppStore - Config Manager"
-echo "Build completed: dist/AppStore - Config Manager"
+chmod +x "dist/Linux/AppStore - Config Manager"
+cp "usage.html" "dist/usage.html"
+cp "install-run-handler-windows.ps1" "dist/install-run-handler-windows.ps1"
+cp "install-run-handler-linux.sh" "dist/install-run-handler-linux.sh"
+chmod +x "dist/install-run-handler-linux.sh"
+echo "Build completed: dist/Linux/AppStore - Config Manager"
