@@ -3,6 +3,7 @@ name: Build Chrome-based AppStore - Config Manager
 on:
   push:
     branches:
+      - main
       - feature/chrome-packaging
     paths:
       - "launcher.py"
