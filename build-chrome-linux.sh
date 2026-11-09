@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 python3 -m pip install --user --upgrade -r requirements-build.txt
 python3 -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config Manager" \
   --add-data "index.html:." \
+  --add-data "usage.html:." \
   --add-data "version.js:." \
   --add-data "style.css:." \
   --add-data "config-list.css:." \
