@@ -30,9 +30,4 @@ python3 -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config M
   --distpath "dist/Linux" \
   launcher.py
 
-PACKAGE_DIR="dist/AppStore-Config-Manager-Ubuntu"
-mkdir -p "$PACKAGE_DIR"
-install -m 755 "dist/Linux/AppStore - Config Manager" "$PACKAGE_DIR/AppStore - Config Manager"
-tar -czf "dist/AppStore-Config-Manager-Ubuntu.tar.gz" -C dist "AppStore-Config-Manager-Ubuntu"
-cp "usage.html" "dist/usage.html"
-echo "Build completed: dist/AppStore-Config-Manager-Ubuntu.tar.gz"
+echo "Build completed: dist/Linux/AppStore - Config Manager"
