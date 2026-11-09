@@ -20,7 +20,13 @@ window.RELEASE_CONFIG_TOOL_VERSION = '1.2';
     button.title = label;
   };
 
+  const initFooterVersion = () => {
+    const versionElement = document.getElementById("appVersion");
+    if (versionElement) versionElement.textContent = window.RELEASE_CONFIG_TOOL_VERSION || "1.0";
+  };
+
   const initPreviewIcons = () => {
+    initFooterVersion();
     makeIconButton(document.getElementById('fullScreenBtn'), fullScreenIcon, 'Full Screen');
     makeIconButton(document.getElementById('copyBtn'), copyIcon, 'Copy JSON');
     makeIconButton(document.getElementById('fullScreenCopyBtn'), copyIcon, 'Copy JSON');
