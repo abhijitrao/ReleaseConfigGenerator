@@ -110,7 +110,7 @@ jobs:
             --add-data "config-file-chooser.js:." \
             --add-data "package-importer.js:." \
             --add-data "package-builder.js:." \
-            --add-data "sample.json:." \ \
+            --add-data "sample.json:." \
             --add-data "v01:v01" \
             --add-data "v02:v02" \
             launcher.py
