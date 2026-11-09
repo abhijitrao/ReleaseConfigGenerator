@@ -18,7 +18,6 @@ if errorlevel 1 (
 
 py -3 -m PyInstaller --noconfirm --clean --onefile --windowed --name "AppStore - Config Manager" ^
   --add-data "index.html;." ^
-  --add-data "usage.html;." ^
   --add-data "version.js;." ^
   --add-data "style.css;." ^
   --add-data "config-list.css;." ^
