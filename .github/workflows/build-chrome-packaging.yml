@@ -10,8 +10,6 @@ on:
       - "launcher.py"
       - "index.html"
       - "usage.html"
-      - "install-run-handler-windows.ps1"
-      - "install-run-handler-linux.sh"
       - "version.js"
       - "*.js"
       - "*.css"
@@ -72,12 +70,9 @@ jobs:
             --distpath "dist/Windows" ^
             launcher.py
 
-      - name: Add usage page and protocol setup scripts
+      - name: Add usage page
         shell: pwsh
-        run: |
-          Copy-Item usage.html dist/usage.html
-          Copy-Item install-run-handler-windows.ps1 dist/install-run-handler-windows.ps1
-          Copy-Item install-run-handler-linux.sh dist/install-run-handler-linux.sh
+        run: Copy-Item usage.html dist/usage.html
 
       - name: Upload Windows distribution
         uses: actions/upload-artifact@v4
@@ -104,7 +99,6 @@ jobs:
         run: |
           python -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config Manager" \
             --add-data "index.html:." \
-            --add-data "usage.html:." \
             --add-data "version.js:." \
             --add-data "style.css:." \
             --add-data "config-list.css:." \
@@ -127,13 +121,10 @@ jobs:
             --add-data "sample.json:." \
             --add-data "v01:v01" \
             --add-data "v02:v02" \
-            --distpath "dist/Linux" \\
+            --distpath "dist/Linux" \
             launcher.py
           chmod +x "dist/Linux/AppStore - Config Manager"
           cp usage.html dist/usage.html
-          cp install-run-handler-windows.ps1 dist/install-run-handler-windows.ps1
-          cp install-run-handler-linux.sh dist/install-run-handler-linux.sh
-          chmod +x dist/install-run-handler-linux.sh
 
       - name: Upload Linux distribution
         uses: actions/upload-artifact@v4
@@ -147,12 +138,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Upload usage page and protocol registration scripts
+      - name: Upload usage guide
         uses: actions/upload-artifact@v4
         with:
           name: AppStore-Config-Manager-Usage-Guide
-          path: |
-            usage.html
-            install-run-handler-windows.ps1
-            install-run-handler-linux.sh
+          path: usage.html
           if-no-files-found: error
