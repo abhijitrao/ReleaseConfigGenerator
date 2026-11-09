@@ -81,7 +81,7 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-  build-linux:
+  build-linux-ubuntu:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -95,7 +95,7 @@ jobs:
       - name: Install build dependency
         run: python -m pip install -r requirements-build.txt
 
-      - name: Build Linux executable
+      - name: Build Ubuntu package
         run: |
           python -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config Manager" \
             --add-data "index.html:." \
@@ -123,24 +123,16 @@ jobs:
             --add-data "v02:v02" \
             --distpath "dist/Linux" \
             launcher.py
-          chmod +x "dist/Linux/AppStore - Config Manager"
+          mkdir -p dist/AppStore-Config-Manager-Ubuntu
+          install -m 755 "dist/Linux/AppStore - Config Manager" "dist/AppStore-Config-Manager-Ubuntu/AppStore - Config Manager"
+          tar -czf dist/AppStore-Config-Manager-Ubuntu.tar.gz -C dist AppStore-Config-Manager-Ubuntu
           cp usage.html dist/usage.html
 
-      - name: Upload Linux distribution
+      - name: Upload Ubuntu distribution
         uses: actions/upload-artifact@v4
         with:
-          name: Release-Config-Generator-Chrome-Linux
-          path: dist/
-          if-no-files-found: error
-
-  package-usage-guide:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Upload usage guide
-        uses: actions/upload-artifact@v4
-        with:
-          name: AppStore-Config-Manager-Usage-Guide
-          path: usage.html
+          name: AppStore-Config-Manager-Ubuntu
+          path: |
+            dist/AppStore-Config-Manager-Ubuntu.tar.gz
+            dist/usage.html
           if-no-files-found: error
