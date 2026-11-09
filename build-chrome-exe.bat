@@ -41,6 +41,7 @@ py -3 -m PyInstaller --noconfirm --clean --onefile --windowed --name "AppStore -
   --add-data "sample.json;." ^
   --add-data "v01;v01" ^
   --add-data "v02;v02" ^
+  --distpath "dist/Windows" ^
   launcher.py
 
 if errorlevel 1 (
@@ -50,5 +51,10 @@ if errorlevel 1 (
 )
 
 echo.
-echo Build completed: dist\AppStore - Config Manager.exe
+if not exist "dist" mkdir "dist"
+copy /Y "usage.html" "dist\usage.html" >nul
+copy /Y "install-run-handler-windows.ps1" "dist\install-run-handler-windows.ps1" >nul
+copy /Y "install-run-handler-linux.sh" "dist\install-run-handler-linux.sh" >nul
+
+echo Build completed: dist\Windows\AppStore - Config Manager.exe
 pause
