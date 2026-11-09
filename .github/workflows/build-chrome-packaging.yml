@@ -73,11 +73,18 @@ jobs:
             --distpath "dist/Windows" ^
             launcher.py
 
-      - name: Upload Windows EXE
+      - name: Add usage page and protocol setup scripts
+        shell: pwsh
+        run: |
+          Copy-Item usage.html dist/usage.html
+          Copy-Item install-run-handler-windows.ps1 dist/install-run-handler-windows.ps1
+          Copy-Item install-run-handler-linux.sh dist/install-run-handler-linux.sh
+
+      - name: Upload Windows distribution
         uses: actions/upload-artifact@v4
         with:
           name: Release-Config-Generator-Chrome-Windows
-          path: "dist/Windows/AppStore - Config Manager.exe"
+          path: dist/
           if-no-files-found: error
 
   build-linux:
@@ -124,12 +131,16 @@ jobs:
             --distpath "dist/Linux" \\
             launcher.py
           chmod +x "dist/Linux/AppStore - Config Manager"
+          cp usage.html dist/usage.html
+          cp install-run-handler-windows.ps1 dist/install-run-handler-windows.ps1
+          cp install-run-handler-linux.sh dist/install-run-handler-linux.sh
+          chmod +x dist/install-run-handler-linux.sh
 
-      - name: Upload Linux executable
+      - name: Upload Linux distribution
         uses: actions/upload-artifact@v4
         with:
           name: Release-Config-Generator-Chrome-Linux
-          path: "dist/Linux/AppStore - Config Manager"
+          path: dist/
           if-no-files-found: error
 
   package-usage-guide:
