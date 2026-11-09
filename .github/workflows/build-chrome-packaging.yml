@@ -120,16 +120,11 @@ jobs:
             --add-data "v02:v02" \
             --distpath "dist/Linux" \
             launcher.py
-          mkdir -p dist/AppStore-Config-Manager-Ubuntu
-          install -m 755 "dist/Linux/AppStore - Config Manager" "dist/AppStore-Config-Manager-Ubuntu/AppStore - Config Manager"
-          tar -czf dist/AppStore-Config-Manager-Ubuntu.tar.gz -C dist AppStore-Config-Manager-Ubuntu
           cp usage.html dist/usage.html
 
       - name: Upload Ubuntu distribution
         uses: actions/upload-artifact@v4
         with:
-          name: AppStore-Config-Manager-Ubuntu
-          path: |
-            dist/AppStore-Config-Manager-Ubuntu.tar.gz
-            dist/usage.html
+          name: AppStore-Config-Manager-Linux-Ubuntu
+          path: dist/
           if-no-files-found: error
