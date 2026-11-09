@@ -3,76 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AppStore - Config Manager | Download &amp; Usage</title>
+  <title>AppStore - Config Manager | Ubuntu Download &amp; Usage</title>
   <style>
     :root{font-family:Arial,sans-serif;color:#172033;background:#f3f6fb}
     *{box-sizing:border-box}
     body{margin:0;padding:32px 18px}
-    main{max-width:900px;margin:auto}
-    header,.platform{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;margin-bottom:18px}
+    main{max-width:760px;margin:auto}
+    header,.panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;margin-bottom:18px}
     h1{font-size:27px;margin:0 0 8px}h2{font-size:20px;margin:0 0 10px}
     p,li{color:#596579;line-height:1.65}
-    .platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-    .platform{margin:0}
-    .platform-icon{font-size:28px;margin-bottom:12px}
+    .platform-icon{font-size:32px;margin-bottom:12px}
     .file{display:block;background:#f1f5f9;padding:10px 12px;border-radius:8px;word-break:break-all;font-family:Consolas,monospace;font-size:13px;margin:14px 0}
     .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
     a.button{display:inline-flex;justify-content:center;align-items:center;padding:11px 16px;border-radius:8px;text-decoration:none;font-weight:600;background:#2563eb;color:white}
     .note{background:#fff8e6;border-left:4px solid #e5a23b;padding:13px 15px;border-radius:7px;margin-top:18px;color:#72551d;line-height:1.6}
     code{background:#eef2f7;padding:2px 5px;border-radius:4px}
     footer{text-align:center;color:#778196;font-size:12px;margin-top:22px}
-    @media(max-width:650px){body{padding:16px 10px}.platform-grid{grid-template-columns:1fr}.actions a{flex:1 1 100%}}
+    @media(max-width:650px){body{padding:16px 10px}.actions a{flex:1 1 100%}}
   </style>
 </head>
 <body>
 <main>
   <header>
     <h1>AppStore - Config Manager</h1>
-    <p>Choose your operating system, download the application, and open it from your Downloads folder.</p>
+    <p>Ubuntu Linux version. Download the package, extract it, and launch the application.</p>
   </header>
 
-  <div class="platform-grid">
-    <section class="platform">
-      <div class="platform-icon" aria-hidden="true">🪟</div>
-      <h2>Windows</h2>
-      <p>For Windows 10 / 11.</p>
-      <span class="file">AppStore - Config Manager.exe</span>
-      <ol>
-        <li>Click <strong>Download for Windows</strong>.</li>
-        <li>Open your Downloads folder.</li>
-        <li>Double-click <code>AppStore - Config Manager.exe</code> to start the application.</li>
-      </ol>
-      <div class="actions">
-        <a class="button" href="Windows/AppStore%20-%20Config%20Manager.exe" download="AppStore - Config Manager.exe">Download for Windows</a>
-      </div>
-    </section>
-
-    <section class="platform">
-      <div class="platform-icon" aria-hidden="true">🐧</div>
-      <h2>Linux</h2>
-      <p>For supported Linux desktop distributions.</p>
-      <span class="file">AppStore - Config Manager</span>
-      <ol>
-        <li>Click <strong>Download for Linux</strong>.</li>
-        <li>Open your Downloads folder.</li>
-        <li>If needed, allow the file to run in its Properties / Permissions, then double-click it.</li>
-      </ol>
-      <div class="actions">
-        <a class="button" href="Linux/AppStore%20-%20Config%20Manager" download="AppStore - Config Manager">Download for Linux</a>
-      </div>
-    </section>
-  </div>
-
-  <section class="platform">
-    <h2>Before you start</h2>
-    <ul>
-      <li>Download the build matching your operating system.</li>
-      <li>Extract the downloaded package first if it is provided as a ZIP file.</li>
-      <li>Google Chrome or Chromium must be installed. Python is not required on the target computer.</li>
-    </ul>
-    <p class="note"><strong>Note:</strong> If Windows shows a security warning, verify that the EXE came from your trusted release source before choosing to run it.</p>
+  <section class="panel">
+    <div class="platform-icon" aria-hidden="true">🐧</div>
+    <h2>Ubuntu</h2>
+    <p>For Ubuntu desktop (64-bit).</p>
+    <span class="file">AppStore-Config-Manager-Ubuntu.tar.gz</span>
+    <div class="actions">
+      <a class="button" href="AppStore-Config-Manager-Ubuntu.tar.gz" download>Download for Ubuntu</a>
+    </div>
+    <h2 style="margin-top:24px">How to run</h2>
+    <ol>
+      <li>Click <strong>Download for Ubuntu</strong>.</li>
+      <li>Open your Downloads folder and extract <code>AppStore-Config-Manager-Ubuntu.tar.gz</code>.</li>
+      <li>Open the extracted <code>AppStore-Config-Manager</code> folder.</li>
+      <li>Right-click <code>AppStore - Config Manager</code> and open <strong>Properties → Permissions</strong>.</li>
+      <li>Enable <strong>Allow executing file as a program</strong>, if it is not already enabled.</li>
+      <li>Close Properties and double-click the executable. Choose <strong>Run</strong> if Ubuntu asks how to open it.</li>
+    </ol>
   </section>
-  <footer>AppStore - Config Manager | Usage Guide</footer>
+
+  <section class="panel">
+    <h2>Requirements</h2>
+    <ul>
+      <li>Ubuntu 64-bit desktop.</li>
+      <li>Google Chrome or Chromium must be installed.</li>
+      <li>Python is not required on the target computer.</li>
+    </ul>
+    <p class="note"><strong>Note:</strong> Download the package only from your trusted release source. If Ubuntu displays a security prompt, verify the source before allowing the application to run.</p>
+  </section>
+  <footer>AppStore - Config Manager | Ubuntu Usage Guide</footer>
 </main>
 </body>
 </html>
