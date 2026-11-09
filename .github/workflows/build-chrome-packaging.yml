@@ -9,6 +9,8 @@ on:
       - "launcher.py"
       - "index.html"
       - "usage.html"
+      - "install-run-handler-windows.ps1"
+      - "install-run-handler-linux.sh"
       - "version.js"
       - "*.js"
       - "*.css"
@@ -67,13 +69,14 @@ jobs:
             --add-data "sample.json;." ^
             --add-data "v01;v01" ^
             --add-data "v02;v02" ^
+            --distpath "dist/Windows" ^
             launcher.py
 
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
           name: Release-Config-Generator-Chrome-Windows
-          path: "dist/AppStore - Config Manager.exe"
+          path: "dist/Windows/AppStore - Config Manager.exe"
           if-no-files-found: error
 
   build-linux:
@@ -124,5 +127,20 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Release-Config-Generator-Chrome-Linux
-          path: "dist/AppStore - Config Manager"
+          path: "dist/Linux/AppStore - Config Manager"
+          if-no-files-found: error
+
+  package-usage-guide:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Upload usage page and protocol registration scripts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppStore-Config-Manager-Usage-Guide
+          path: |
+            usage.html
+            install-run-handler-windows.ps1
+            install-run-handler-linux.sh
           if-no-files-found: error
