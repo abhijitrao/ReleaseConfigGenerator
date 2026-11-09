@@ -109,6 +109,67 @@ class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, _format, *_args):
         pass
 
+    def _send_json(self, status, payload):
+        import json
+
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self):
+        # These actions are intentionally limited to this local launcher.
+        if self.client_address[0] not in ("127.0.0.1", "::1"):
+            self._send_json(403, {"ok": False, "message": "Local access only."})
+            return
+
+        if self.path == "/__launcher/open-folder":
+            try:
+                folder = application_directory()
+                if sys.platform == "win32":
+                    os.startfile(str(folder))
+                else:
+                    subprocess.Popen(["xdg-open", str(folder)], start_new_session=True)
+                self._send_json(200, {"ok": True, "message": "Application folder opened."})
+            except Exception as exc:
+                self._send_json(500, {"ok": False, "message": str(exc)})
+            return
+
+        if self.path == "/__launcher/launch-app":
+            try:
+                executable = application_executable()
+                if not executable.is_file():
+                    self._send_json(404, {"ok": False, "message": f"Application executable not found: {executable.name}"})
+                    return
+                if sys.platform == "win32":
+                    subprocess.Popen([str(executable)], cwd=str(executable.parent), close_fds=True)
+                else:
+                    executable.chmod(executable.stat().st_mode | 0o111)
+                    subprocess.Popen([str(executable)], cwd=str(executable.parent), start_new_session=True)
+                self._send_json(200, {"ok": True, "message": f"Launch request sent: {executable.name}"})
+            except Exception as exc:
+                self._send_json(500, {"ok": False, "message": str(exc)})
+            return
+
+        self._send_json(404, {"ok": False, "message": "Unknown launcher action."})
+
+
+def application_directory():
+    # In a PyInstaller one-file build, sys._MEIPASS is a temporary extraction
+    # directory. The actual executable and its sibling files live beside sys.executable.
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+def application_executable():
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve()
+    return Path(__file__).resolve()
+
 
 def main():
     lock = acquire_single_instance()
