@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/chrome-packaging
+      - feature/usage-launch-options
     paths:
       - "launcher.py"
       - "index.html"
@@ -120,8 +121,9 @@ jobs:
             --add-data "sample.json:." \
             --add-data "v01:v01" \
             --add-data "v02:v02" \
+            --distpath "dist/Linux" \\
             launcher.py
-          chmod +x "dist/AppStore - Config Manager"
+          chmod +x "dist/Linux/AppStore - Config Manager"
 
       - name: Upload Linux executable
         uses: actions/upload-artifact@v4
