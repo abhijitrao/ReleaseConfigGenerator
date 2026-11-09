@@ -1,4 +1,4 @@
-name: Build Chrome-based Release Config Generator
+name: Build Chrome-based AppStore - Config Manager
 
 on:
   push:
@@ -40,7 +40,7 @@ jobs:
       - name: Build EXE
         shell: cmd
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name "Release Config Generator" ^
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name "AppStore - Config Manager" ^
             --add-data "index.html;." ^
             --add-data "version.js;." ^
             --add-data "style.css;." ^
@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Release-Config-Generator-Chrome-Windows
-          path: "dist/Release Config Generator.exe"
+          path: "dist/AppStore - Config Manager.exe"
           if-no-files-found: error
 
   build-linux:
@@ -89,7 +89,7 @@ jobs:
 
       - name: Build Linux executable
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --name "Release Config Generator" \
+          python -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config Manager" \
             --add-data "index.html:." \
             --add-data "version.js:." \
             --add-data "style.css:." \
@@ -114,11 +114,11 @@ jobs:
             --add-data "v01:v01" \
             --add-data "v02:v02" \
             launcher.py
-          chmod +x "dist/Release Config Generator"
+          chmod +x "dist/AppStore - Config Manager"
 
       - name: Upload Linux executable
         uses: actions/upload-artifact@v4
         with:
           name: Release-Config-Generator-Chrome-Linux
-          path: "dist/Release Config Generator"
+          path: "dist/AppStore - Config Manager"
           if-no-files-found: error
