@@ -1,17 +1,17 @@
-# Release Config Generator — Chrome-based builds
+# AppStore - Config Manager — Chrome-based builds
 
 This packaging option runs the existing browser application in an installed Google Chrome or Chromium app window. It does not embed Chromium or Electron.
 
 ## Windows build
 1. Install Python 3.10 or newer on the build machine.
 2. Run `build-chrome-exe.bat`.
-3. Find `dist/Release Config Generator.exe`.
+3. Find `dist/AppStore - Config Manager.exe`.
 
 ## Linux build
 1. Install Python 3.10 or newer on the build machine.
 2. Ensure Google Chrome or Chromium is installed on the target machine.
 3. Run `chmod +x build-chrome-linux.sh && ./build-chrome-linux.sh`.
-4. Find `dist/Release Config Generator`.
+4. Find `dist/AppStore - Config Manager`.
 
 The target machine does not need Python, but it must have Chrome or Chromium installed.
 
