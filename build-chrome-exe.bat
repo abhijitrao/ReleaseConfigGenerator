@@ -16,7 +16,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-py -3 -m PyInstaller --noconfirm --clean --onefile --windowed --name "Release Config Generator" ^
+py -3 -m PyInstaller --noconfirm --clean --onefile --windowed --name "AppStore - Config Manager" ^
   --add-data "index.html;." ^
   --add-data "version.js;." ^
   --add-data "style.css;." ^
@@ -49,5 +49,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Build completed: dist\Release Config Generator.exe
+echo Build completed: dist\AppStore - Config Manager.exe
 pause
