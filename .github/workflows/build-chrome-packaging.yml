@@ -8,6 +8,7 @@ on:
     paths:
       - "launcher.py"
       - "index.html"
+      - "usage.html"
       - "version.js"
       - "*.js"
       - "*.css"
@@ -43,6 +44,7 @@ jobs:
         run: |
           python -m PyInstaller --noconfirm --clean --onefile --windowed --name "AppStore - Config Manager" ^
             --add-data "index.html;." ^
+            --add-data "usage.html;." ^
             --add-data "version.js;." ^
             --add-data "style.css;." ^
             --add-data "config-list.css;." ^
@@ -92,6 +94,7 @@ jobs:
         run: |
           python -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config Manager" \
             --add-data "index.html:." \
+            --add-data "usage.html:." \
             --add-data "version.js:." \
             --add-data "style.css:." \
             --add-data "config-list.css:." \
