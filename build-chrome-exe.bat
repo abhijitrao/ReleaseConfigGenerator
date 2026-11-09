@@ -52,8 +52,6 @@ if errorlevel 1 (
 echo.
 if not exist "dist" mkdir "dist"
 copy /Y "usage.html" "dist\usage.html" >nul
-copy /Y "install-run-handler-windows.ps1" "dist\install-run-handler-windows.ps1" >nul
-copy /Y "install-run-handler-linux.sh" "dist\install-run-handler-linux.sh" >nul
 
 echo Build completed: dist\Windows\AppStore - Config Manager.exe
 pause
