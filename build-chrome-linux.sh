@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 python3 -m pip install --user --upgrade -r requirements-build.txt
-python3 -m PyInstaller --noconfirm --clean --onefile --name "Release Config Generator" \
+python3 -m PyInstaller --noconfirm --clean --onefile --name "AppStore - Config Manager" \
   --add-data "index.html:." \
   --add-data "version.js:." \
   --add-data "style.css:." \
@@ -29,5 +29,5 @@ python3 -m PyInstaller --noconfirm --clean --onefile --name "Release Config Gene
   --add-data "v02:v02" \
   launcher.py
 
-chmod +x "dist/Release Config Generator"
-echo "Build completed: dist/Release Config Generator"
+chmod +x "dist/AppStore - Config Manager"
+echo "Build completed: dist/AppStore - Config Manager"
