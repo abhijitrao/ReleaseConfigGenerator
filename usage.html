@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AppStore - Config Manager | Usage Guide</title>
+  <style>
+    :root{font-family:Arial,sans-serif;color:#172033;background:#f4f6fb}
+    *{box-sizing:border-box}
+    body{margin:0;padding:32px 18px}
+    main{max-width:900px;margin:0 auto}
+    header,.card{background:#fff;border:1px solid #e3e8f0;border-radius:14px;padding:22px;margin-bottom:18px}
+    h1{margin:0 0 8px;font-size:26px}h2{margin:0 0 12px;font-size:19px}
+    p,li{line-height:1.6;color:#526078}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+    button,a.button{border:0;border-radius:8px;padding:11px 16px;font-weight:600;cursor:pointer;text-decoration:none;background:#2563eb;color:#fff}
+    button.secondary{background:#e8edf5;color:#172033}
+    button:disabled{opacity:.6;cursor:wait}
+    .status{min-height:24px;margin-top:12px;font-size:14px;color:#2563eb}
+    code{background:#eef2f7;padding:2px 5px;border-radius:4px}
+    .note{background:#fff8e6;border-left:4px solid #e6a23c;padding:12px 14px;border-radius:6px;color:#71551b}
+    @media(max-width:600px){body{padding:16px 10px}.actions{flex-direction:column}button,a.button{text-align:center;width:100%}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>AppStore - Config Manager</h1>
+    <p>Usage guide for Windows and Linux desktop builds.</p>
+    <div class="actions">
+      <button id="launchButton">Launch application</button>
+      <button id="folderButton" class="secondary">Open application folder</button>
+    </div>
+    <div id="actionStatus" class="status" role="status" aria-live="polite"></div>
+  </header>
+
+  <section class="card">
+    <h2>Windows</h2>
+    <ol>
+      <li>Download <code>AppStore - Config Manager.exe</code> and keep it in a folder of your choice.</li>
+      <li>Install Google Chrome.</li>
+      <li>Double-click the EXE to start the application.</li>
+      <li>To use the buttons above, open this Usage Guide from the running application's local page.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>Linux</h2>
+    <ol>
+      <li>Download <code>AppStore - Config Manager</code> and keep it in a folder of your choice.</li>
+      <li>Install Google Chrome or Chromium.</li>
+      <li>Make the file executable with <code>chmod +x "AppStore - Config Manager"</code>.</li>
+      <li>Run it with <code>./"AppStore - Config Manager"</code> (or launch it from your file manager).</li>
+      <li>To use the buttons above, open this Usage Guide from the running application's local page.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>Requirements and notes</h2>
+    <ul>
+      <li>Python is not required on the target machine.</li>
+      <li>Google Chrome or Chromium must be installed.</li>
+      <li>The app uses a local-only server at <code>127.0.0.1:8766</code>.</li>
+      <li>Windows EXE and Linux executable are separate builds; do not use one on the other operating system.</li>
+    </ul>
+    <p class="note">The Launch Application button starts the executable located beside the packaged launcher. If the application is already running, its single-instance protection may show an “already running” message instead of opening a second copy.</p>
+  </section>
+</main>
+<script>
+  async function runAction(path, button) {
+    const status = document.getElementById("actionStatus");
+    const buttons = document.querySelectorAll("button");
+    buttons.forEach(item => item.disabled = true);
+    status.textContent = "Please wait...";
+    try {
+      const response = await fetch(path, { method: "POST", cache: "no-store" });
+      const result = await response.json();
+      status.textContent = result.message || (result.ok ? "Done." : "Action failed.");
+      if (!response.ok || !result.ok) status.style.color = "#b42318";
+      else status.style.color = "#2563eb";
+    } catch (error) {
+      status.style.color = "#b42318";
+      status.textContent = "Could not contact the local launcher. Open this page from the running application.";
+    } finally {
+      buttons.forEach(item => item.disabled = false);
+    }
+  }
+  document.getElementById("launchButton").addEventListener("click", event => runAction("/__launcher/launch-app", event.currentTarget));
+  document.getElementById("folderButton").addEventListener("click", event => runAction("/__launcher/open-folder", event.currentTarget));
+</script>
+</body>
+</html>
