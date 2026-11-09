@@ -29,53 +29,55 @@
 <main>
   <header>
     <h1>AppStore - Config Manager</h1>
-    <p>Select your operating system to download and use the application. Keep this <code>usage.html</code> file in the same parent directory as the <code>Windows</code> and <code>Linux</code> folders.</p>
+    <p>Choose your operating system. Keep <code>usage.html</code>, both platform folders, and the two registration scripts together in the same parent directory.</p>
   </header>
 
   <div class="platform-grid">
     <section class="platform">
       <div class="platform-icon" aria-hidden="true">🪟</div>
       <h2>Windows</h2>
-      <p>For Windows 10 / 11. Download the EXE and run it from your computer.</p>
+      <p>For Windows 10 / 11. Download the EXE or register the Run button once for the current Windows user.</p>
       <span class="file">Windows/AppStore - Config Manager.exe</span>
       <ol>
-        <li>Click Download and save the EXE.</li>
-        <li>Install Google Chrome if it is not already installed.</li>
-        <li>Open the downloaded EXE to launch the application.</li>
+        <li>Click Download to save the EXE.</li>
+        <li>Keep the EXE in the <code>Windows</code> folder shown above.</li>
+        <li>Right-click <code>install-run-handler-windows.ps1</code> and choose Run with PowerShell. If script execution is blocked, open PowerShell in this folder and run:<br><code>powershell -ExecutionPolicy Bypass -File .\install-run-handler-windows.ps1</code></li>
+        <li>Return to this page and click Run. Confirm the browser's external-app prompt.</li>
       </ol>
       <div class="actions">
         <a class="button" href="Windows/AppStore%20-%20Config%20Manager.exe" download="AppStore - Config Manager.exe">Download for Windows</a>
-        <a class="button secondary" href="Windows/AppStore%20-%20Config%20Manager.exe" target="_blank" rel="noopener">Run / Open</a>
+        <a class="button secondary" href="appstore-config://run">Run for Windows</a>
       </div>
     </section>
 
     <section class="platform">
       <div class="platform-icon" aria-hidden="true">🐧</div>
       <h2>Linux</h2>
-      <p>For supported Linux desktop distributions. Download the Linux executable.</p>
+      <p>For supported Linux desktop distributions. Download the Linux executable or register the Run button once.</p>
       <span class="file">Linux/AppStore - Config Manager</span>
       <ol>
-        <li>Click Download and save the file.</li>
-        <li>Install Google Chrome or Chromium if it is not already installed.</li>
-        <li>Allow execution, then launch the file.</li>
+        <li>Click Download to save the Linux executable.</li>
+        <li>Keep the executable in the <code>Linux</code> folder shown above.</li>
+        <li>Open a terminal in this parent folder and run:<br><code>bash install-run-handler-linux.sh</code></li>
+        <li>Return to this page and click Run. Confirm the browser's external-app prompt.</li>
       </ol>
       <div class="actions">
         <a class="button" href="Linux/AppStore%20-%20Config%20Manager" download="AppStore - Config Manager">Download for Linux</a>
-        <a class="button secondary" href="Linux/AppStore%20-%20Config%20Manager" target="_blank" rel="noopener">Run / Open</a>
+        <a class="button secondary" href="appstore-config://run">Run for Linux</a>
       </div>
-      <p><code>chmod +x "AppStore - Config Manager"</code></p>
     </section>
   </div>
 
   <section class="platform">
-    <h2>Important information</h2>
+    <h2>How Run works</h2>
     <ul>
-      <li>Google Chrome or Chromium must be installed on the target computer.</li>
-      <li>Python is not required on the target computer.</li>
-      <li>Windows and Linux use different executable files. Download the one matching your operating system.</li>
-      <li>After downloading on Linux, run <code>chmod +x "AppStore - Config Manager"</code> in the downloaded file's directory if needed.</li>
+      <li>The setup script registers the <code>appstore-config://</code> protocol for the current OS user. It does not require administrator/root privileges.</li>
+      <li>When Run is clicked, the browser asks for confirmation to open the registered AppStore Config Manager application. Accept that prompt to launch it.</li>
+      <li>Download always downloads the executable using the browser's normal download settings.</li>
+      <li>Google Chrome or Chromium must be installed. Python is not required on the target computer.</li>
+      <li>Windows and Linux require their matching executable and matching registration script.</li>
     </ul>
-    <p class="note"><strong>About Run / Open:</strong> A normal HTML page cannot directly execute an EXE or Linux binary because browsers block websites from launching local programs. This link asks the browser to open or download the selected file; depending on the browser and operating system, you may need to open the downloaded file manually. The Download buttons save the corresponding executable using your browser's normal download location or save dialog.</p>
+    <p class="note"><strong>Security:</strong> Browsers intentionally require user confirmation before opening an external application. This is the closest supported equivalent to an Android runtime permission prompt. The page cannot silently grant execution permission or bypass Windows/Linux security controls.</p>
   </section>
   <footer>AppStore - Config Manager | Usage Guide</footer>
 </main>
