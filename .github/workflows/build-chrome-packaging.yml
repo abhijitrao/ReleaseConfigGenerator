@@ -26,6 +26,58 @@ permissions:
   contents: read
 
 jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependency
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Build Windows executable
+        shell: cmd
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name "AppStore - Config Manager" ^
+            --add-data "index.html;." ^
+            --add-data "version.js;." ^
+            --add-data "style.css;." ^
+            --add-data "config-list.css;." ^
+            --add-data "validate-json.css;." ^
+            --add-data "phase2.css;." ^
+            --add-data "modal-scroll-lock.css;." ^
+            --add-data "apk-reader.js;." ^
+            --add-data "script.js;." ^
+            --add-data "config-ui.js;." ^
+            --add-data "config-import-render.js;." ^
+            --add-data "timestamp-manager.js;." ^
+            --add-data "modal-behavior.js;." ^
+            --add-data "json-validator.js;." ^
+            --add-data "import-json-validation.js;." ^
+            --add-data "apk-ui.js;." ^
+            --add-data "duplicate-app-guard.js;." ^
+            --add-data "config-file-chooser.js;." ^
+            --add-data "package-importer.js;." ^
+            --add-data "package-builder.js;." ^
+            --add-data "sample.json;." ^
+            --add-data "v01;v01" ^
+            --add-data "v02;v02" ^
+            --distpath "dist/Windows" ^
+            launcher.py
+          copy usage.html dist\usage.html
+
+      - name: Upload Windows distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: Release-Config-Generator-Windows
+          path: dist/
+          if-no-files-found: error
+
   build-linux-ubuntu:
     runs-on: ubuntu-latest
     steps:
